@@ -288,7 +288,13 @@ class PytorchBase(ModelBenchmark):
                 logger.info('Failed to enable deterministic training in centralized preprocess')
 
     def _handle_deterministic_log_options(self):
-        """Set generate_log if deterministic and no log options are set."""
+        """
+        Automatically enable log generation when deterministic mode is active and no explicit log options are set.
+
+        If the benchmark is running in deterministic mode and neither 'generate_log' nor 'compare_log' options are specified,
+        this method sets 'generate_log' to True. This ensures that a reference log is produced by default, allowing users
+        to have a baseline for future deterministic comparisons without requiring explicit log-related arguments.
+        """
         has_gen = getattr(self._args, 'generate_log', None)
         has_cmp = getattr(self._args, 'compare_log', None)
         if not has_gen and not has_cmp:
