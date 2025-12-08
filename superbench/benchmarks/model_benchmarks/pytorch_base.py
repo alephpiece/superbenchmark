@@ -89,7 +89,6 @@ class PytorchBase(ModelBenchmark):
         Args:
             precision: Model precision (can be enum or string).
             extra_keys: List of additional argument keys to include in metadata.
-            self._args: Benchmark arguments containing model configuration.
 
         Returns:
             None
