@@ -140,7 +140,6 @@ class PytorchLSTM(PytorchBase):
         duration = []
         periodic = {'loss': [], 'act_mean': [], 'step': []}
         curr_step = 0
-        check_frequency = self._args.check_frequency
         while True:
             for idx, sample in enumerate(self._dataloader):
                 sample = sample.to(dtype=getattr(torch, precision.value))
@@ -158,7 +157,7 @@ class PytorchLSTM(PytorchBase):
                 curr_step += 1
                 if curr_step > self._args.num_warmup:
                     duration.append((end - start) * 1000)
-                    self.record_determinism_fingerprint(curr_step, loss, output, periodic, check_frequency)
+                    self.record_determinism_fingerprint(curr_step, loss, output, periodic, self._args.check_frequency)
                     self._log_step_time(curr_step, precision, duration)
                     if self._is_finished(curr_step, end):
                         return duration, self._finalize_periodic_logging(periodic)
@@ -175,7 +174,6 @@ class PytorchLSTM(PytorchBase):
         """
         duration = []
         curr_step = 0
-        check_frequency = self._args.check_frequency
         with torch.no_grad():
             self._model.eval()
             while True:
