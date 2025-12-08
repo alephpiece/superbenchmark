@@ -189,7 +189,7 @@ class PytorchGPT2(PytorchBase):
                     duration.append((end - start) * 1000)
                     self.record_determinism_fingerprint(curr_step, loss, logits, periodic, check_frequency)
                     self._log_step_time(curr_step, precision, duration)
-                    if self._is_finished(curr_step, end, check_frequency):
+                    if self._is_finished(curr_step, end):
                         return duration, self._finalize_periodic_logging(periodic)
 
     def _inference_step(self, precision):
@@ -225,7 +225,7 @@ class PytorchGPT2(PytorchBase):
                         # Save the step time of every training/inference step, unit is millisecond.
                         duration.append((end - start) * 1000)
                         self._log_step_time(curr_step, precision, duration)
-                    if self._is_finished(curr_step, end, check_frequency):
+                    if self._is_finished(curr_step, end):
                         return duration
 
 

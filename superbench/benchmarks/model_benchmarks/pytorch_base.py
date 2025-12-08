@@ -154,7 +154,6 @@ class PytorchBase(ModelBenchmark):
                 periodic.setdefault('step', []).append(curr_step)
             except Exception:
                 logger.warning(f'Unable to log loss at curr_step {curr_step}')
-                pass
             # 2) Tiny activation fingerprint: mean over logits for sample 0
             try:
                 if logits is not None:
@@ -171,7 +170,6 @@ class PytorchBase(ModelBenchmark):
                 # On exception preserve alignment by ensuring keys exist
                 logger.warning(f'Unable to log act_mean at curr_step {curr_step}')
                 periodic.setdefault('act_mean', []).append(None)
-                pass
 
     def _finalize_periodic_logging(self, periodic, info_key='loss'):
         """Finalize periodic logging and return info dict for training step."""
@@ -244,7 +242,6 @@ class PytorchBase(ModelBenchmark):
                     os.makedirs(dirpath, exist_ok=True)
                 except Exception:
                     logger.info(f'Failed to create directory for log path: {log_path}')
-                    pass
             model_log_utils.save_model_log(
                 log_path,
                 self._model_run_metadata,

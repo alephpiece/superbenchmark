@@ -209,7 +209,7 @@ class PytorchLlama(PytorchBase):
                     duration.append((end - start) * 1000)
                     self.record_determinism_fingerprint(curr_step, loss, logits, periodic, check_frequency)
                     self._log_step_time(curr_step, precision, duration)
-                    if self._is_finished(curr_step, end, check_frequency):
+                    if self._is_finished(curr_step, end):
                         return duration, self._finalize_periodic_logging(periodic)
 
     def _inference_step(self, precision):
@@ -244,7 +244,7 @@ class PytorchLlama(PytorchBase):
                     if curr_step > self._args.num_warmup:
                         duration.append((end - start) * 1000)
                         self._log_step_time(curr_step, precision, duration)
-                    if self._is_finished(curr_step, end, check_frequency):
+                    if self._is_finished(curr_step, end):
                         return duration
 
 

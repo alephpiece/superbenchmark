@@ -157,5 +157,3 @@ def test_pytorch_model_nondeterministic_default(model_name, params):
     for key in ('loss', 'act_mean', 'step'):
         assert key in periodic, f"Key '{key}' missing in _model_run_periodic."
         assert (len(periodic[key]) == 0), f"Expected empty list for periodic['{key}'], got {periodic[key]}."
-
-    pass
