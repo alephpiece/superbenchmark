@@ -77,7 +77,6 @@ def test_pytorch_model_determinism(model_name, params):
     # Check args
     assert benchmark._args.deterministic is True
     assert getattr(benchmark._args, 'generate_log', False)
-    assert benchmark._args.deterministic is True
     assert benchmark._args.deterministic_seed == 42
     assert benchmark._args.check_frequency == 10
 
