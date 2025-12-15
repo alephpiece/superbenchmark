@@ -213,7 +213,6 @@ class PytorchMixtral(PytorchBase):
             )
         except Exception:
             logger.warning(f'Unable to assign model metadata for logging - model: {self._name}, precision: {precision}')
-            pass
 
     def _train_step(self, precision):
         """Define the training process.
