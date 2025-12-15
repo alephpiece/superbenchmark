@@ -34,8 +34,8 @@ For inference, supported percentiles include
 
 **New: Support fp8_hybrid and fp8_e4m3 precision for BERT models.**
 
-**New: SDC Support**
-SuperBench now supports SDC to ensure reproducibility across runs. This includes fixed seeds and deterministic algorithms. To enable SDC, the following flags and environment variables must be set:
+**New: Deterministic Training Support**
+SuperBench now supports deterministic training to ensure reproducibility across runs. This includes fixed seeds and deterministic algorithms. To enable deterministic training, the following flags and environment variables must be set:
 
 - **Flags:**
   - `--enable-determinism`: Enables deterministic computation for reproducible results.
