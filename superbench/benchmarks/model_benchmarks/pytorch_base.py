@@ -53,6 +53,9 @@ class PytorchBase(ModelBenchmark):
 
     def _enable_deterministic_training(self):
         """Enable deterministic training settings for reproducible results."""
+        # Set CUBLAS_WORKSPACE_CONFIG before any CUDA operations to ensure deterministic cuBLAS behavior
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        
         if hasattr(self._args, 'deterministic_seed'):
             torch.manual_seed(self._args.deterministic_seed)
             random.seed(self._args.deterministic_seed)
