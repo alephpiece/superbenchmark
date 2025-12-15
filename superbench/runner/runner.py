@@ -348,10 +348,28 @@ class SuperBenchRunner():
                             continue
 
                         results_summary[benchmark_name][metric].append(result['result'][metric])
+                    
+                    # Include raw_data from rank0 results (which has consolidated multi-rank data)
+                    if 'raw_data' in result and 'rank0' in str(results_file):
+                        if 'raw_data' not in results_summary[benchmark_name]:
+                            results_summary[benchmark_name]['raw_data'] = {}
+                        for key, value in result['raw_data'].items():
+                            results_summary[benchmark_name]['raw_data'][key] = value
 
+        # Extract raw_data before merging (to preserve structure)
+        raw_data_dict = {}
+        for benchmark_name in results_summary:
+            if 'raw_data' in results_summary[benchmark_name]:
+                raw_data_dict[benchmark_name] = results_summary[benchmark_name]['raw_data']
+        
         results_summary = self.__merge_benchmark_metrics(results_summary, reduce_ops)
         monitor_summary = self.__merge_monitor_metrics(node_path)
         results_summary = {**results_summary, **monitor_summary}
+        
+        # Add raw_data back with nested structure
+        if raw_data_dict:
+            results_summary['raw_data'] = raw_data_dict
+        
         with (node_path / 'results-summary.json').open(mode='w') as f:
             json.dump(results_summary, f, indent=2)
 
@@ -397,6 +415,9 @@ class SuperBenchRunner():
         metrics_summary = dict()
         for benchmark_name in results_summary:
             for metric in results_summary[benchmark_name]:
+                # Skip raw_data - it will be added separately without flattening
+                if metric == 'raw_data':
+                    continue
                 metric_name = '{}/{}'.format(benchmark_name, metric)
                 if metric_name not in reduce_ops or (
                     reduce_ops[metric_name] is not None and reduce_ops[metric_name] not in ReduceType.get_values()

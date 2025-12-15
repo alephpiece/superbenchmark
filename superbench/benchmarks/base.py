@@ -121,32 +121,15 @@ class Benchmark(ABC):
     def _override_args_with_compare_log(self, args):
         """Override arguments with metadata from a compare log file if available.
 
+        This is a legacy method. Metadata override is now handled by benchmark-specific
+        implementations (e.g., pytorch_base.py for PyTorch models).
+
         Args:
             args: Parsed arguments.
 
         Returns:
-            argparse: Arguments updated with metadata values.
+            argparse: Arguments (returned unchanged).
         """
-        # Only override if compare_log is set and is a valid argument for this benchmark
-        if args is not None and hasattr(args, 'compare_log') and getattr(args, 'compare_log', None):
-            logger.info(f'Original Arguments before overriding from compare_log metadata for determinism: {args}')
-            try:
-                from superbench.common import model_log_utils
-                log_data = model_log_utils.load_model_log(args.compare_log)
-                metadata = log_data.get('metadata', {})
-                try:
-                    from superbench.benchmarks import Precision
-                except ImportError:
-                    Precision = None
-                for key, value in metadata.items():
-                    if hasattr(args, key):
-                        if key == 'precision' and Precision is not None:
-                            setattr(args, key, self._convert_precision_value(value, Precision))
-                        else:
-                            setattr(args, key, value)
-                logger.info(f'Arguments overridden from compare_log metadata for determinism. New Arguments: {args}')
-            except Exception as e:
-                logger.warning(f'Failed to override args from compare_log metadata: {e}')
         return args
 
     def _convert_precision_value(self, value, Precision):
@@ -333,6 +316,10 @@ class Benchmark(ABC):
               instance of List[List[Number]] or List[str] for BenchmarkType.MICRO.
         """
         for metric in self._result.raw_data:
+            # Skip validation for metadata (dict type used for configuration storage)
+            if metric.startswith('metadata'):
+                continue
+                
             is_valid = True
             if self._benchmark_type == BenchmarkType.MODEL:
                 is_valid = self.__is_list_list_type(self._result.raw_data[metric], numbers.Number)
