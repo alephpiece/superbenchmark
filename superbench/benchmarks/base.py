@@ -113,7 +113,6 @@ class Benchmark(ABC):
         if args is not None and 'compare_log' in [a.dest for a in self._parser._actions]:
             args = self._override_args_with_compare_log(args)
 
-        ret = True
         ret = self._check_unknown_args(unknown)
 
         return ret, args, unknown
@@ -319,7 +318,7 @@ class Benchmark(ABC):
             # Skip validation for metadata (dict type used for configuration storage)
             if metric.startswith('metadata'):
                 continue
-                
+
             is_valid = True
             if self._benchmark_type == BenchmarkType.MODEL:
                 is_valid = self.__is_list_list_type(self._result.raw_data[metric], numbers.Number)

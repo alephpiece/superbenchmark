@@ -10,13 +10,13 @@ import time
 
 import torch
 import transformers
-
 try:
     import transformer_engine.pytorch as te
 except ImportError:
     te = None
-from torch.utils.data import DataLoader
+from torch.backends.cuda import sdp_kernel
 from torch.distributed import TCPStore, PrefixStore
+from torch.utils.data import DataLoader
 
 from superbench.common.utils import logger
 from superbench.benchmarks import (
@@ -26,7 +26,6 @@ from superbench.benchmarks import (
     DistributedImpl,
 )
 from superbench.benchmarks.model_benchmarks.model_base import Optimizer, ModelBenchmark
-from torch.backends.cuda import sdp_kernel
 
 
 class PytorchBase(ModelBenchmark):
@@ -55,7 +54,7 @@ class PytorchBase(ModelBenchmark):
         """Enable deterministic training settings for reproducible results."""
         # Set CUBLAS_WORKSPACE_CONFIG before any CUDA operations to ensure deterministic cuBLAS behavior
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
-        
+
         if hasattr(self._args, 'deterministic_seed'):
             torch.manual_seed(self._args.deterministic_seed)
             random.seed(self._args.deterministic_seed)
@@ -219,7 +218,7 @@ class PytorchBase(ModelBenchmark):
 
     def _post_run_model_log(self):
         """Add deterministic metrics to results and optionally compare with reference results.
-        
+
         Deterministic metrics (loss, activation mean) are stored in the results file alongside
         other benchmark metrics. When --compare-log is specified, loads the reference results
         file and compares deterministic metrics per-rank.
@@ -227,18 +226,18 @@ class PytorchBase(ModelBenchmark):
         # Add deterministic metrics to result system (all ranks add their own metrics)
         if getattr(self._args, 'enable_determinism', False):
             self._add_deterministic_metrics_to_result()
-            
+
             # Save consolidated results from all ranks (rank 0 only)
             if getattr(self._args, 'generate_log', None):
                 self._save_consolidated_deterministic_results()
-            
+
             # Compare with reference results if requested
             if getattr(self._args, 'compare_log', None):
                 self._compare_deterministic_results()
 
     def _add_deterministic_metrics_to_result(self):
         """Add deterministic fingerprints and losses to the benchmark result system.
-        
+
         This makes deterministic metrics visible in results-summary.json alongside
         other benchmark metrics. In distributed training, metrics include rank information.
         """
@@ -251,13 +250,13 @@ class PytorchBase(ModelBenchmark):
                         metric_name = f'deterministic_{key}_rank{self._global_rank}'
                     else:
                         metric_name = f'deterministic_{key}'
-                    
+
                     # Add raw data (all values at each checkpoint)
                     self._result.add_raw_data(metric_name, values, self._args.log_raw_data)
                     # Add summarized result (mean of checkpointed values)
                     import statistics
                     self._result.add_result(metric_name, statistics.mean([v for v in values if v is not None]))
-        
+
         # Add count of deterministic checks performed
         if self._model_run_periodic.get('step'):
             if self._global_rank is not None:
@@ -265,7 +264,7 @@ class PytorchBase(ModelBenchmark):
             else:
                 metric_name = 'deterministic_check_count'
             self._result.add_result(metric_name, len(self._model_run_periodic['step']))
-        
+
         # Save metadata for configuration reproducibility
         if self._model_run_metadata:
             if self._global_rank is not None:
@@ -274,16 +273,16 @@ class PytorchBase(ModelBenchmark):
                 metric_name = 'metadata'
             # Use False for log_raw_data to save in result object, not log file
             self._result.add_raw_data(metric_name, self._model_run_metadata, False)
-    
+
     def _save_consolidated_deterministic_results(self):
         """Gather deterministic data from all ranks and save to results-summary (rank 0 only).
-        
+
         In distributed training, all ranks send their raw_data to rank 0, which consolidates
         and adds it to the result system. This allows all ranks' checkpoint data to appear
         in the standard results-summary files.
         """
         import torch.distributed as dist
-        
+
         # In distributed mode, gather all ranks' data to rank 0
         if self._args.distributed_impl == DistributedImpl.DDP:
             # Serialize current rank's raw_data
@@ -291,13 +290,13 @@ class PytorchBase(ModelBenchmark):
             for key in self._result.raw_data:
                 if key.startswith('deterministic_'):
                     raw_data_to_send[key] = self._result.raw_data[key]
-            
+
             # Gather all ranks' data to rank 0
             if self._global_rank == 0:
                 # Rank 0 collects data from all ranks
                 all_ranks_data = [None] * dist.get_world_size()
                 dist.gather_object(raw_data_to_send, all_ranks_data, dst=0)
-                
+
                 # Add all ranks' raw_data to rank 0's result (which becomes results-summary)
                 for rank_idx, rank_data in enumerate(all_ranks_data):
                     if rank_data:
@@ -305,7 +304,7 @@ class PytorchBase(ModelBenchmark):
                             # Add to rank 0's result raw_data if not already present
                             if key not in self._result.raw_data:
                                 self._result.raw_data[key] = value
-                
+
                 logger.info(f'Rank 0: Consolidated deterministic results from {dist.get_world_size()} ranks into results')
             else:
                 # Other ranks send their data to rank 0
@@ -313,23 +312,23 @@ class PytorchBase(ModelBenchmark):
         else:
             # Non-distributed: data already in result, nothing to consolidate
             logger.info(f'Deterministic results stored in results')
-    
+
     def _compare_deterministic_results(self):
         """Compare current deterministic metrics with reference results file.
-        
+
         Loads the reference results.json file and compares deterministic metrics
         (loss, activation mean) per-rank to verify reproducibility.
         """
         import json
         import torch.distributed as dist
-        
+
         compare_log_path = self._args.compare_log
         logger.info(f'Rank {self._global_rank if self._global_rank is not None else 0}: Loading reference results from {compare_log_path}')
-        
+
         # Track if this rank detected any failure
         has_failure = False
         failure_msg = ""
-        
+
         try:
             with open(compare_log_path, 'r') as f:
                 ref_results = json.load(f)
@@ -342,40 +341,40 @@ class PytorchBase(ModelBenchmark):
         except json.JSONDecodeError as e:
             has_failure = True
             failure_msg = f'Invalid JSON in reference results file {compare_log_path}: {e}'
-        
+
         if not has_failure:
             # Get the raw_data section from the reference file
             if 'raw_data' not in ref_results:
                 has_failure = True
                 failure_msg = f'Reference file {compare_log_path} does not contain "raw_data" section'
-        
+
         if not has_failure:
             # Handle nested format from results-summary.json
             ref_raw_data_section = ref_results['raw_data']
-            
+
             # Find the benchmark name that matches this benchmark
             ref_raw_data = None
             for benchmark_name in ref_raw_data_section:
                 if self._name in benchmark_name:
                     ref_raw_data = ref_raw_data_section[benchmark_name]
                     break
-            
+
             if ref_raw_data is None:
                 has_failure = True
                 failure_msg = (
                     f'Reference file does not contain raw_data for benchmark matching "{self._name}". '
                     f'Available benchmarks: {list(ref_raw_data_section.keys())}'
                 )
-        
+
         if not has_failure:
             curr_raw_data = self._result.raw_data
-            
+
             # Determine metric prefix based on rank
             if self._global_rank is not None:
                 metric_prefix = f'deterministic_loss_rank{self._global_rank}'
             else:
                 metric_prefix = 'deterministic_loss'
-            
+
             # Check if deterministic metrics exist in reference
             if metric_prefix not in ref_raw_data:
                 has_failure = True
@@ -383,32 +382,32 @@ class PytorchBase(ModelBenchmark):
                     f'Reference results do not contain deterministic metrics ({metric_prefix}) in raw_data. '
                     f'Make sure the reference was run with --enable-determinism flag.'
                 )
-        
+
         if not has_failure:
             # Compare deterministic raw data (step-by-step values)
             mismatches = []
             import numpy as np
-            
+
             for key in curr_raw_data:
                 if key.startswith('deterministic_') and key in ref_raw_data:
                     curr_val = curr_raw_data[key]
                     ref_val = ref_raw_data[key]
-                    
+
                     # Compare raw data lists (contains step-by-step values)
                     if isinstance(curr_val, list) and isinstance(ref_val, list):
                         # Raw data is list of lists for multiple runs
                         if len(curr_val) != len(ref_val):
                             mismatches.append(f'{key}: run count mismatch ({len(curr_val)} vs {len(ref_val)})')
                             continue
-                        
+
                         for run_idx in range(len(curr_val)):
                             curr_run = curr_val[run_idx]
                             ref_run = ref_val[run_idx]
-                            
+
                             if len(curr_run) != len(ref_run):
                                 mismatches.append(f'{key}[run {run_idx}]: checkpoint count mismatch ({len(curr_run)} vs {len(ref_run)})')
                                 continue
-                            
+
                             # Compare each checkpoint value for exact equality
                             for step_idx, (curr_step_val, ref_step_val) in enumerate(zip(curr_run, ref_run)):
                                 logger.debug(f'{key}[{run_idx},{step_idx}]: {curr_step_val} vs {ref_step_val}')
@@ -420,21 +419,21 @@ class PytorchBase(ModelBenchmark):
                                         )
                                     else:
                                         mismatches.append(f'{key}[run {run_idx}, checkpoint {step_idx}]: {curr_step_val} vs {ref_step_val}')
-            
+
             if mismatches:
                 has_failure = True
                 failure_msg = (
                     f'Rank {self._global_rank if self._global_rank is not None else 0}: '
                     f'Determinism check FAILED. Mismatched metrics:\n' + '\n'.join(mismatches)
                 )
-        
+
         # Synchronize failure status across all ranks in distributed mode
         if self._args.distributed_impl == DistributedImpl.DDP:
             # Convert failure status to tensor for all_reduce
             import torch
             failure_tensor = torch.tensor([1 if has_failure else 0], dtype=torch.int32, device='cuda')
             dist.all_reduce(failure_tensor, op=dist.ReduceOp.MAX)
-            
+
             # If any rank failed, all ranks should fail
             if failure_tensor.item() > 0:
                 if has_failure:
@@ -450,7 +449,7 @@ class PytorchBase(ModelBenchmark):
             # Non-distributed mode, just raise
             logger.error(failure_msg)
             raise RuntimeError(failure_msg)
-        
+
         logger.info(f'Rank {self._global_rank if self._global_rank is not None else 0}: Determinism check PASSED - all checkpoints match')
 
     def _preprocess(self):
@@ -483,37 +482,37 @@ class PytorchBase(ModelBenchmark):
 
         In deterministic mode, metrics are automatically added to the results file.
         The --compare-log option can be used to compare against a previous results file.
-        
+
         If compare-log is provided, load metadata from reference file and override current configuration
         to ensure exact reproducibility.
         """
         if self._args.compare_log:
             import json
             from superbench.common.utils import logger
-            
+
             try:
                 with open(self._args.compare_log, 'r') as f:
                     ref_data = json.load(f)
-                
+
                 # Extract metadata from reference file (stored in raw_data section)
                 ref_metadata = None
-                
+
                 # Check if there's a benchmark-specific section in the reference
                 if 'raw_data' in ref_data:
                     ref_raw_data = ref_data['raw_data']
-                    
+
                     # Try to find matching benchmark in nested format (results-summary.json)
                     for benchmark_name in ref_raw_data:
                         if self._name in benchmark_name:
                             benchmark_raw_data = ref_raw_data[benchmark_name]
-                            
+
                             # Metadata is stored in raw_data section with rank suffix
                             # Try both rank-specific and non-rank formats
                             if self._global_rank is not None:
                                 metadata_key = f'metadata_rank{self._global_rank}'
                             else:
                                 metadata_key = 'metadata'
-                            
+
                             if metadata_key in benchmark_raw_data:
                                 # raw_data stores values in a list, metadata is [dict]
                                 metadata_list = benchmark_raw_data[metadata_key]
@@ -528,7 +527,7 @@ class PytorchBase(ModelBenchmark):
                                 elif isinstance(metadata_list, dict):
                                     # Direct dict (shouldn't happen but handle it)
                                     ref_metadata = metadata_list
-                            
+
                             # If no rank-specific metadata, try metadata_rank0 as fallback
                             if ref_metadata is None and 'metadata_rank0' in benchmark_raw_data:
                                 metadata_list = benchmark_raw_data['metadata_rank0']
@@ -539,21 +538,21 @@ class PytorchBase(ModelBenchmark):
                                     elif isinstance(first_item, list) and len(first_item) > 0 and isinstance(first_item[0], dict):
                                         ref_metadata = first_item[0]
                             break
-                
+
                 if ref_metadata:
                     # Override current args with reference metadata for critical reproducibility params
                     override_params = [
                         'batch_size', 'seq_len', 'hidden_size', 'num_steps', 'num_warmup', 'check_frequency',
-                        'num_classes', 'num_layers', 'num_hidden_layers', 'num_attention_heads', 
-                        'intermediate_size', 'input_size', 'bidirectional', 'seed', 'precision', 
+                        'num_classes', 'num_layers', 'num_hidden_layers', 'num_attention_heads',
+                        'intermediate_size', 'input_size', 'bidirectional', 'seed', 'precision',
                         'deterministic_seed'
                     ]
-                    
+
                     for param in override_params:
                         if param in ref_metadata and hasattr(self._args, param):
                             ref_value = ref_metadata[param]
                             curr_value = getattr(self._args, param)
-                            
+
                             # Handle precision specially - it must be a list
                             if param == 'precision':
                                 if isinstance(ref_value, str):
@@ -564,7 +563,7 @@ class PytorchBase(ModelBenchmark):
                                     # Ensure list items are Precision enums
                                     from superbench.benchmarks.context import Precision
                                     ref_value = [Precision(v) if isinstance(v, str) else v for v in ref_value]
-                            
+
                             if ref_value != curr_value:
                                 logger.info(
                                     f'Overriding {param} from {curr_value} to {ref_value} (from reference metadata)'
@@ -575,7 +574,7 @@ class PytorchBase(ModelBenchmark):
                         f'No metadata found in reference file {self._args.compare_log}. '
                         'Cannot verify configuration matches reference run.'
                     )
-                    
+
             except Exception as e:
                 logger.warning(f'Failed to load metadata from reference file {self._args.compare_log}: {e}')
 
