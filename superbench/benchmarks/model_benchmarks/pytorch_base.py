@@ -140,7 +140,7 @@ class PytorchBase(ModelBenchmark):
             logger.info(f'Unable to convert loss to float at step {curr_step}')
             v = None
         # Periodic fingerprint logging
-        if getattr(self._args, 'deterministic', False) and (curr_step % check_frequency == 0):
+        if getattr(self._args, 'enable_determinism', False) and (curr_step % check_frequency == 0):
             # 1) Loss fingerprint (only at fingerprinting frequency)
             try:
                 # Ensure the lists exist and remain index-aligned by appending
@@ -197,7 +197,8 @@ class PytorchBase(ModelBenchmark):
             help='Random seed for deterministic training.',
         )
         self._parser.add_argument(
-            '--deterministic',
+            '--enable-determinism',
+            '--enable_determinism',
             action='store_true',
             default=False,
             help='Enable deterministic training for reproducible results.',
@@ -224,7 +225,7 @@ class PytorchBase(ModelBenchmark):
         file and compares deterministic metrics per-rank.
         """
         # Add deterministic metrics to result system (all ranks add their own metrics)
-        if getattr(self._args, 'deterministic', False):
+        if getattr(self._args, 'enable_determinism', False):
             self._add_deterministic_metrics_to_result()
             
             # Save consolidated results from all ranks (rank 0 only)
@@ -336,7 +337,7 @@ class PytorchBase(ModelBenchmark):
             has_failure = True
             failure_msg = (
                 f'Reference results file not found: {compare_log_path}. '
-                f'Make sure you have run the benchmark with --deterministic first to generate reference results.'
+                f'Make sure you have run the benchmark with --enable-determinism first to generate reference results.'
             )
         except json.JSONDecodeError as e:
             has_failure = True
@@ -380,7 +381,7 @@ class PytorchBase(ModelBenchmark):
                 has_failure = True
                 failure_msg = (
                     f'Reference results do not contain deterministic metrics ({metric_prefix}) in raw_data. '
-                    f'Make sure the reference was run with --deterministic flag.'
+                    f'Make sure the reference was run with --enable-determinism flag.'
                 )
         
         if not has_failure:
@@ -459,7 +460,7 @@ class PytorchBase(ModelBenchmark):
             return False
         # Deterministic setup is handled centrally in set_deterministic_seed() which
         # is invoked earlier in the model-base preprocess before dataset creation.
-        if getattr(self._args, 'deterministic', False):
+        if getattr(self._args, 'enable_determinism', False):
             self._handle_deterministic_log_options()
         return True
 
@@ -470,7 +471,7 @@ class PytorchBase(ModelBenchmark):
         so per-model dataset generation is reproducible without each model needing
         to call torch.manual_seed().
         """
-        if getattr(self._args, 'deterministic', False):
+        if getattr(self._args, 'enable_determinism', False):
             try:
                 self._enable_deterministic_training()
             except Exception:

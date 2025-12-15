@@ -18,7 +18,7 @@ def run_deterministic_benchmark(model_name, params, log_path=None, extra_args=No
     if log_path is None:
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmpfile:
             log_path = tmpfile.name
-    parameters = params + ' --deterministic --deterministic_seed 42'
+    parameters = params + ' --enable-determinism --deterministic_seed 42'
     if extra_args:
         parameters += ' ' + extra_args
     if '--generate-log' not in parameters:
@@ -75,7 +75,7 @@ def test_pytorch_model_determinism(model_name, params):
     assert benchmark and benchmark.return_code == ReturnCode.SUCCESS
 
     # Check args
-    assert benchmark._args.deterministic is True
+    assert benchmark._args.enable_determinism is True
     assert getattr(benchmark._args, 'generate_log', False)
     assert benchmark._args.deterministic_seed == 42
     assert benchmark._args.check_frequency == 10

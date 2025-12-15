@@ -4,21 +4,22 @@
 """Unified PyTorch deterministic training example for all supported models.
 
 Deterministic metrics (loss, activation mean) are automatically stored in results.json
-when --deterministic flag is enabled. Use --compare-log to compare against a reference run.
+when --enable-determinism flag is enabled. Use --compare-log to compare against a reference run.
 
 Commands to run:
 Run A (generate reference):
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 examples/benchmarks/pytorch_deterministic_example.py \
-    --model <model_from_MODEL_CHOICES> --deterministic --deterministic-seed 42
+python3 examples/benchmarks/pytorch_deterministic_example.py \
+    --model <model_from_MODEL_CHOICES> --enable-determinism --deterministic-seed 42
 
 This creates results-0.json with deterministic metrics.
 
 Run B (compare against reference):
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python3 examples/benchmarks/pytorch_deterministic_example.py \
-    --model <model_from_MODEL_CHOICES> --deterministic --deterministic-seed 42 --compare-log results-0.json
+python3 examples/benchmarks/pytorch_deterministic_example.py \
+    --model <model_from_MODEL_CHOICES> --enable-determinism --deterministic-seed 42 --compare-log results-0.json
 
+Note: CUBLAS_WORKSPACE_CONFIG is now automatically set by the code when determinism is enabled.
 """
 
 import argparse
@@ -64,7 +65,8 @@ def main():
     parser = argparse.ArgumentParser(description='Unified PyTorch deterministic training example.')
     parser.add_argument('--model', type=str, choices=MODEL_CHOICES, required=True, help='Model to run.')
     parser.add_argument(
-        '--deterministic',
+        '--enable-determinism',
+        '--enable_determinism',
         action='store_true',
         help='Enable deterministic mode for reproducible results.',
     )
@@ -83,8 +85,8 @@ def main():
     args = parser.parse_args()
 
     parameters = DEFAULT_PARAMS[args.model]
-    if args.deterministic:
-        parameters += ' --deterministic'
+    if args.enable_determinism:
+        parameters += ' --enable-determinism'
     if args.deterministic_seed is not None:
         parameters += f' --deterministic_seed {args.deterministic_seed}'
     if args.compare_log:

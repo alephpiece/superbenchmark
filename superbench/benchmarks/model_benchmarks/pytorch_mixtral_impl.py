@@ -200,7 +200,7 @@ class PytorchMixtral(PytorchBase):
     def _setup_target(self):
         # Use a separate deterministic RNG stream for target generation by offsetting the seed.
         # This keeps dataset RNG and target/model RNG deterministic but independent.
-        if getattr(self._args, 'deterministic', False) and hasattr(self._args, 'deterministic_seed'):
+        if getattr(self._args, 'enable_determinism', False) and hasattr(self._args, 'deterministic_seed'):
             torch.manual_seed(self._args.deterministic_seed + 1)
         self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
         if self._gpu_available:
