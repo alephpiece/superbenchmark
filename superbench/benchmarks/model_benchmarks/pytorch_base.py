@@ -19,6 +19,7 @@ from torch.distributed import TCPStore, PrefixStore
 from torch.utils.data import DataLoader
 
 from superbench.common.utils import logger
+from superbench.common import model_log_utils
 from superbench.benchmarks import (
     Framework,
     ReturnCode,
@@ -92,34 +93,9 @@ class PytorchBase(ModelBenchmark):
         Returns:
             None
         """
-        # Common metadata keys
-        metadata = {
-            'model_name': self._name,
-            'precision': (precision.value if hasattr(precision, 'value') else str(precision)),
-            'seed': getattr(self._args, 'deterministic_seed', None),
-            'deterministic_seed': getattr(self._args, 'deterministic_seed', None),
-            'batch_size': getattr(self._args, 'batch_size', None),
-            'seq_len': getattr(self._args, 'seq_len', None),
-            'num_steps': getattr(self._args, 'num_steps', None),
-            'num_warmup': getattr(self._args, 'num_warmup', None),
-            'check_frequency': getattr(self._args, 'check_frequency', None),
-            'num_classes': getattr(self._args, 'num_classes', None),
-        }
-        # Add any extra keys present in args (for model-specific fields)
-        keys = [
-            'hidden_size',
-            'num_hidden_layers',
-            'num_attention_heads',
-            'intermediate_size',
-            'input_size',
-            'num_layers',
-            'bidirectional',
-        ]
-        if extra_keys:
-            keys += extra_keys
-        for key in keys:
-            metadata[key] = getattr(self._args, key, None)
-        self._model_run_metadata = metadata
+        self._model_run_metadata = model_log_utils.build_model_metadata(
+            self._name, precision, self._args, extra_keys
+        )
         return None
 
     def record_determinism_fingerprint(self, curr_step, loss, logits, periodic, check_frequency):
@@ -132,43 +108,14 @@ class PytorchBase(ModelBenchmark):
             periodic (dict): Dictionary to store periodic fingerprints ('loss', 'act_mean', 'step').
             check_frequency (int): Frequency for fingerprint logging.
         """
-        # Record per-step loss for determinism checks (for full history)
-        try:
-            v = float(loss.detach().item()) if hasattr(loss, 'detach') else float(loss)
-        except Exception:
-            logger.info(f'Unable to convert loss to float at step {curr_step}')
-            v = None
-        # Periodic fingerprint logging
-        if getattr(self._args, 'enable_determinism', False) and (curr_step % check_frequency == 0):
-            # 1) Loss fingerprint (only at fingerprinting frequency)
-            try:
-                # Ensure the lists exist and remain index-aligned by appending
-                # a placeholder (None) when a measurement is unavailable.
-                if 'loss' in periodic and isinstance(periodic['loss'], list):
-                    periodic['loss'].append(v if v is not None else None)
-                else:
-                    periodic['loss'] = [v if v is not None else None]
+        # Record per-step loss for determinism checks
+        loss_value = model_log_utils.record_step_loss(loss, curr_step, self._model_run_losses, logger)
 
-                logger.info(f'Loss at step {curr_step}: {v}')
-                periodic.setdefault('step', []).append(curr_step)
-            except Exception:
-                logger.warning(f'Unable to log loss at curr_step {curr_step}')
-            # 2) Tiny activation fingerprint: mean over logits for sample 0
-            try:
-                if logits is not None:
-                    act_mean = (
-                        float(logits[0].detach().float().mean().item())
-                        if hasattr(logits[0], 'detach') else float(logits[0])
-                    )
-                    logger.info(f'ActMean at step {curr_step}: {act_mean}')
-                    periodic.setdefault('act_mean', []).append(act_mean)
-                else:
-                    # Keep lists aligned by appending None when activation not available
-                    periodic.setdefault('act_mean', []).append(None)
-            except Exception:
-                # On exception preserve alignment by ensuring keys exist
-                logger.warning(f'Unable to log act_mean at curr_step {curr_step}')
-                periodic.setdefault('act_mean', []).append(None)
+        # Record periodic fingerprint (loss and activation mean)
+        model_log_utils.record_periodic_fingerprint(
+            curr_step, loss_value, logits, periodic, check_frequency,
+            getattr(self._args, 'enable_determinism', False), logger
+        )
 
     def _finalize_periodic_logging(self, periodic, info_key='loss'):
         """Finalize periodic logging and return info dict for training step."""
@@ -227,9 +174,9 @@ class PytorchBase(ModelBenchmark):
         if getattr(self._args, 'enable_determinism', False):
             self._add_deterministic_metrics_to_result()
 
-            # Save consolidated results from all ranks (rank 0 only)
-            if getattr(self._args, 'generate_log', None):
-                self._save_consolidated_deterministic_results()
+            # Consolidate results from all ranks to rank 0 for complete results-summary
+            # This is needed whether generating or comparing logs
+            self._save_consolidated_deterministic_results()
 
             # Compare with reference results if requested
             if getattr(self._args, 'compare_log', None):
@@ -319,7 +266,6 @@ class PytorchBase(ModelBenchmark):
         Loads the reference results.json file and compares deterministic metrics
         (loss, activation mean) per-rank to verify reproducibility.
         """
-        import json
         import torch.distributed as dist
 
         compare_log_path = self._args.compare_log
@@ -330,95 +276,16 @@ class PytorchBase(ModelBenchmark):
         failure_msg = ""
 
         try:
-            with open(compare_log_path, 'r') as f:
-                ref_results = json.load(f)
-        except FileNotFoundError:
-            has_failure = True
-            failure_msg = (
-                f'Reference results file not found: {compare_log_path}. '
-                f'Make sure you have run the benchmark with --enable-determinism first to generate reference results.'
+            # Load reference results and extract raw_data
+            ref_raw_data, _ = model_log_utils.load_reference_results(
+                compare_log_path, self._name, self._global_rank, logger
             )
-        except json.JSONDecodeError as e:
-            has_failure = True
-            failure_msg = f'Invalid JSON in reference results file {compare_log_path}: {e}'
 
-        if not has_failure:
-            # Get the raw_data section from the reference file
-            if 'raw_data' not in ref_results:
-                has_failure = True
-                failure_msg = f'Reference file {compare_log_path} does not contain "raw_data" section'
-
-        if not has_failure:
-            # Handle nested format from results-summary.json
-            ref_raw_data_section = ref_results['raw_data']
-
-            # Find the benchmark name that matches this benchmark
-            ref_raw_data = None
-            for benchmark_name in ref_raw_data_section:
-                if self._name in benchmark_name:
-                    ref_raw_data = ref_raw_data_section[benchmark_name]
-                    break
-
-            if ref_raw_data is None:
-                has_failure = True
-                failure_msg = (
-                    f'Reference file does not contain raw_data for benchmark matching "{self._name}". '
-                    f'Available benchmarks: {list(ref_raw_data_section.keys())}'
-                )
-
-        if not has_failure:
+            # Compare metrics
             curr_raw_data = self._result.raw_data
-
-            # Determine metric prefix based on rank
-            if self._global_rank is not None:
-                metric_prefix = f'deterministic_loss_rank{self._global_rank}'
-            else:
-                metric_prefix = 'deterministic_loss'
-
-            # Check if deterministic metrics exist in reference
-            if metric_prefix not in ref_raw_data:
-                has_failure = True
-                failure_msg = (
-                    f'Reference results do not contain deterministic metrics ({metric_prefix}) in raw_data. '
-                    f'Make sure the reference was run with --enable-determinism flag.'
-                )
-
-        if not has_failure:
-            # Compare deterministic raw data (step-by-step values)
-            mismatches = []
-            import numpy as np
-
-            for key in curr_raw_data:
-                if key.startswith('deterministic_') and key in ref_raw_data:
-                    curr_val = curr_raw_data[key]
-                    ref_val = ref_raw_data[key]
-
-                    # Compare raw data lists (contains step-by-step values)
-                    if isinstance(curr_val, list) and isinstance(ref_val, list):
-                        # Raw data is list of lists for multiple runs
-                        if len(curr_val) != len(ref_val):
-                            mismatches.append(f'{key}: run count mismatch ({len(curr_val)} vs {len(ref_val)})')
-                            continue
-
-                        for run_idx in range(len(curr_val)):
-                            curr_run = curr_val[run_idx]
-                            ref_run = ref_val[run_idx]
-
-                            if len(curr_run) != len(ref_run):
-                                mismatches.append(f'{key}[run {run_idx}]: checkpoint count mismatch ({len(curr_run)} vs {len(ref_run)})')
-                                continue
-
-                            # Compare each checkpoint value for exact equality
-                            for step_idx, (curr_step_val, ref_step_val) in enumerate(zip(curr_run, ref_run)):
-                                logger.debug(f'{key}[{run_idx},{step_idx}]: {curr_step_val} vs {ref_step_val}')
-                                if curr_step_val != ref_step_val:
-                                    if isinstance(curr_step_val, (int, float)) and isinstance(ref_step_val, (int, float)):
-                                        mismatches.append(
-                                            f'{key}[run {run_idx}, checkpoint {step_idx}]: '
-                                            f'{curr_step_val} vs {ref_step_val} (diff: {abs(curr_step_val - ref_step_val)})'
-                                        )
-                                    else:
-                                        mismatches.append(f'{key}[run {run_idx}, checkpoint {step_idx}]: {curr_step_val} vs {ref_step_val}')
+            mismatches = model_log_utils.compare_raw_data_metrics(
+                curr_raw_data, ref_raw_data, self._global_rank, logger
+            )
 
             if mismatches:
                 has_failure = True
@@ -426,6 +293,9 @@ class PytorchBase(ModelBenchmark):
                     f'Rank {self._global_rank if self._global_rank is not None else 0}: '
                     f'Determinism check FAILED. Mismatched metrics:\n' + '\n'.join(mismatches)
                 )
+        except (FileNotFoundError, ValueError) as e:
+            has_failure = True
+            failure_msg = str(e)
 
         # Synchronize failure status across all ranks in distributed mode
         if self._args.distributed_impl == DistributedImpl.DDP:
@@ -487,94 +357,22 @@ class PytorchBase(ModelBenchmark):
         to ensure exact reproducibility.
         """
         if self._args.compare_log:
-            import json
-            from superbench.common.utils import logger
-
             try:
-                with open(self._args.compare_log, 'r') as f:
-                    ref_data = json.load(f)
-
-                # Extract metadata from reference file (stored in raw_data section)
-                ref_metadata = None
-
-                # Check if there's a benchmark-specific section in the reference
-                if 'raw_data' in ref_data:
-                    ref_raw_data = ref_data['raw_data']
-
-                    # Try to find matching benchmark in nested format (results-summary.json)
-                    for benchmark_name in ref_raw_data:
-                        if self._name in benchmark_name:
-                            benchmark_raw_data = ref_raw_data[benchmark_name]
-
-                            # Metadata is stored in raw_data section with rank suffix
-                            # Try both rank-specific and non-rank formats
-                            if self._global_rank is not None:
-                                metadata_key = f'metadata_rank{self._global_rank}'
-                            else:
-                                metadata_key = 'metadata'
-
-                            if metadata_key in benchmark_raw_data:
-                                # raw_data stores values in a list, metadata is [dict]
-                                metadata_list = benchmark_raw_data[metadata_key]
-                                if isinstance(metadata_list, list) and len(metadata_list) > 0:
-                                    # Get the first element (should be the dict)
-                                    first_item = metadata_list[0]
-                                    if isinstance(first_item, dict):
-                                        ref_metadata = first_item
-                                    elif isinstance(first_item, list) and len(first_item) > 0 and isinstance(first_item[0], dict):
-                                        # Handle double-nested case
-                                        ref_metadata = first_item[0]
-                                elif isinstance(metadata_list, dict):
-                                    # Direct dict (shouldn't happen but handle it)
-                                    ref_metadata = metadata_list
-
-                            # If no rank-specific metadata, try metadata_rank0 as fallback
-                            if ref_metadata is None and 'metadata_rank0' in benchmark_raw_data:
-                                metadata_list = benchmark_raw_data['metadata_rank0']
-                                if isinstance(metadata_list, list) and len(metadata_list) > 0:
-                                    first_item = metadata_list[0]
-                                    if isinstance(first_item, dict):
-                                        ref_metadata = first_item
-                                    elif isinstance(first_item, list) and len(first_item) > 0 and isinstance(first_item[0], dict):
-                                        ref_metadata = first_item[0]
-                            break
+                # Load reference metadata
+                _, ref_metadata = model_log_utils.load_reference_results(
+                    self._args.compare_log, self._name, self._global_rank, logger
+                )
 
                 if ref_metadata:
-                    # Override current args with reference metadata for critical reproducibility params
-                    override_params = [
-                        'batch_size', 'seq_len', 'hidden_size', 'num_steps', 'num_warmup', 'check_frequency',
-                        'num_classes', 'num_layers', 'num_hidden_layers', 'num_attention_heads',
-                        'intermediate_size', 'input_size', 'bidirectional', 'seed', 'precision',
-                        'deterministic_seed'
-                    ]
-
-                    for param in override_params:
-                        if param in ref_metadata and hasattr(self._args, param):
-                            ref_value = ref_metadata[param]
-                            curr_value = getattr(self._args, param)
-
-                            # Handle precision specially - it must be a list
-                            if param == 'precision':
-                                if isinstance(ref_value, str):
-                                    # Convert string to Precision enum and wrap in list
-                                    from superbench.benchmarks.context import Precision
-                                    ref_value = [Precision(ref_value)]
-                                elif isinstance(ref_value, list):
-                                    # Ensure list items are Precision enums
-                                    from superbench.benchmarks.context import Precision
-                                    ref_value = [Precision(v) if isinstance(v, str) else v for v in ref_value]
-
-                            if ref_value != curr_value:
-                                logger.info(
-                                    f'Overriding {param} from {curr_value} to {ref_value} (from reference metadata)'
-                                )
-                                setattr(self._args, param, ref_value)
+                    # Apply metadata overrides
+                    overridden = model_log_utils.apply_metadata_overrides(self._args, ref_metadata, logger)
+                    if overridden == 0:
+                        logger.info('No parameters needed to be overridden from reference metadata')
                 else:
                     logger.warning(
                         f'No metadata found in reference file {self._args.compare_log}. '
                         'Cannot verify configuration matches reference run.'
                     )
-
             except Exception as e:
                 logger.warning(f'Failed to load metadata from reference file {self._args.compare_log}: {e}')
 
