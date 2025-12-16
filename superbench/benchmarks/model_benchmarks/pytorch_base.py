@@ -68,21 +68,19 @@ class PytorchBase(ModelBenchmark):
         try:
             torch.backends.cuda.matmul.allow_tf32 = False
         except Exception:
-            logger.info('Failed to disable TF32 in cuda matmul')
-            pass
+            logger.warning('Failed to disable TF32 in cuda matmul')
+
         try:
             torch.backends.cudnn.allow_tf32 = False
         except Exception:
-            logger.info('Failed to disable TF32 in cuDNN')
-            pass
+            logger.warning('Failed to disable TF32 in cuDNN')
+
         # Force Scaled Dot-Product Attention to use deterministic math kernel
         try:
             sdp_kernel(enable_flash=False, enable_math=True, enable_mem_efficient=False)
         except Exception:
-            logger.info('SDP kernel not available')
+            logger.warning('SDP kernel not available')
             # Older PyTorch versions may not expose sdp_kernel; ignore in that case
-            pass
-
     def _assign_model_run_metadata(self, precision, extra_keys=None):
         """Assign model_run_metadata for determinism fingerprinting/logging.
 
