@@ -40,10 +40,11 @@ SuperBench now supports deterministic training to ensure reproducibility across 
 - **Flags:**
   - `--enable-determinism`: Enables deterministic computation for reproducible results.
   - `--deterministic_seed <seed>`: Sets the seed for reproducibility.
-  - `--generate_log` : Generates the log file that can be used as reference for comparison
-  - `--compare_log <path>`: Specifies the path to the reference log for comparison.
+  - `--generate_log` : Boolean flag that stores comparison metrics in the results file
+  - `--compare_log <results_file_path>`: Specifies the path to the reference file for comparison.
 
 - **Environment Variables:**
+  - (Implicity set when `enable-determinism` flag is set)
   - `CUBLAS_WORKSPACE_CONFIG=:4096:8`: Ensures deterministic behavior in cuBLAS.
 
 #### Metrics
