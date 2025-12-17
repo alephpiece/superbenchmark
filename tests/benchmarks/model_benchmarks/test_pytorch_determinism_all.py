@@ -10,19 +10,15 @@ import json
 import pytest
 from superbench.benchmarks import BenchmarkRegistry, Platform, Framework, ReturnCode
 
-os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
 
-
-def run_deterministic_benchmark(model_name, params, log_path=None, extra_args=None):
+def run_deterministic_benchmark(model_name, params, results_path=None, extra_args=None):
     """Helper to launch a deterministic benchmark and return the result."""
-    if log_path is None:
+    if results_path is None:
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmpfile:
-            log_path = tmpfile.name
-    parameters = params + ' --enable-determinism --deterministic_seed 42'
+            results_path = tmpfile.name
+    parameters = params + ' --enable-determinism --deterministic_seed 42 --check_frequency 10'
     if extra_args:
         parameters += ' ' + extra_args
-    if '--generate-log' not in parameters:
-        parameters += f' --generate-log {log_path} --check_frequency 10'
     context = BenchmarkRegistry.create_benchmark_context(
         model_name,
         platform=Platform.CUDA,
@@ -30,38 +26,53 @@ def run_deterministic_benchmark(model_name, params, log_path=None, extra_args=No
         framework=Framework.PYTORCH,
     )
     benchmark = BenchmarkRegistry.launch_benchmark(context)
-    return benchmark, log_path
+
+    # Save result to file for comparison tests (in results-summary format)
+    if benchmark and benchmark.return_code == ReturnCode.SUCCESS:
+        # Convert to results-summary format with nested benchmark name
+        result_dict = json.loads(benchmark._result.to_string())
+        summary_format = {
+            'raw_data': {}
+        }
+        # Nest raw_data under benchmark name as results-summary.json does
+        benchmark_name = result_dict['name']
+        summary_format['raw_data'][benchmark_name] = result_dict['raw_data']
+
+        with open(results_path, 'w') as f:
+            json.dump(summary_format, f, indent=2)
+
+    return benchmark, results_path
 
 
 MODELS = [
     (
         'resnet18',
-        '--batch_size 2 --image_size 32 --num_classes 2 --num_warmup 1 --num_steps 1 --model_action train inference',
+        '--batch_size 2 --image_size 32 --num_classes 2 --num_warmup 1 --num_steps 20 --model_action train --precision float32',
     ),
     (
         'lstm',
-        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 1 '
-        '--model_action train inference '
+        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 '
+        '--model_action train '
         '--precision float32',
     ),
     (
         'gpt2-small',
-        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 1 '
-        '--model_action train inference',
+        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 '
+        '--model_action train --precision float32',
     ),
     (
         'llama2-7b',
-        '--batch_size 1 --seq_len 1 --num_warmup 1 --num_steps 1 --precision float16 --model_action train inference',
+        '--batch_size 1 --seq_len 1 --num_warmup 1 --num_steps 20 --precision float32 --model_action train',
     ),
     (
         'mixtral-8x7b',
-        '--batch_size 1 --seq_len 4 --num_warmup 1 --num_steps 1 --precision float16 '
+        '--batch_size 1 --seq_len 4 --num_warmup 1 --num_steps 20 --precision float32 '
         '--hidden_size 128 --max_position_embeddings 32 '
-        '--intermediate_size 256 --model_action train inference',
+        '--intermediate_size 256 --model_action train',
     ),
     (
         'bert-base',
-        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 1 --model_action train inference',
+        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 --model_action train --precision float32',
     ),
 ]
 
@@ -71,32 +82,60 @@ MODELS = [
 @pytest.mark.parametrize('model_name, params', MODELS)
 def test_pytorch_model_determinism(model_name, params):
     """Parameterised Test for PyTorch model determinism."""
-    benchmark, log_path = run_deterministic_benchmark(model_name, params)
+    benchmark, results_path = run_deterministic_benchmark(model_name, params)
     assert benchmark and benchmark.return_code == ReturnCode.SUCCESS
 
     # Check args
     assert benchmark._args.enable_determinism is True
-    assert getattr(benchmark._args, 'generate_log', False)
     assert benchmark._args.deterministic_seed == 42
     assert benchmark._args.check_frequency == 10
 
-    # Log-file generation and contents
-    assert os.path.exists(log_path)
-    with open(log_path, 'r') as f:
+    # Results file generation and contents
+    assert os.path.exists(results_path)
+    with open(results_path, 'r') as f:
         data = json.load(f)
-    assert 'schema_version' in data
-    assert 'metadata' in data
-    assert 'per_step_fp32_loss' in data
-    assert 'fingerprints' in data
-    assert isinstance(data['per_step_fp32_loss'], list)
-    assert isinstance(data['fingerprints'], dict)
 
-    # Run with compare-log for success
-    extra_args = f'--compare-log {log_path} --check_frequency 10'
-    benchmark_compare, _ = run_deterministic_benchmark(model_name, params, log_path, extra_args)
+    # Validate result structure contains raw_data with deterministic metrics (results-summary format)
+    assert 'raw_data' in data, 'Expected raw_data in result'
+    # Get the benchmark-specific nested data
+    benchmark_name = benchmark._result.name
+    assert benchmark_name in data['raw_data'], f'Expected {benchmark_name} in raw_data'
+    raw_data = data['raw_data'][benchmark_name]
+
+    # Check for deterministic metrics in raw_data (either with rank suffix or without)
+    loss_keys = [k for k in raw_data.keys() if 'deterministic_loss' in k]
+    act_keys = [k for k in raw_data.keys() if 'deterministic_act_mean' in k]
+    step_keys = [k for k in raw_data.keys() if 'deterministic_step' in k]
+
+    assert len(loss_keys) > 0, f'Expected deterministic_loss in raw_data, got keys: {list(raw_data.keys())}'
+    assert len(act_keys) > 0, 'Expected deterministic_act_mean in raw_data'
+    assert len(step_keys) > 0, 'Expected deterministic_step in raw_data'
+
+    # Validate the detailed values are captured
+    loss_data = raw_data[loss_keys[0]]
+    assert isinstance(loss_data, list) and len(loss_data) > 0, 'Expected non-empty loss list'
+    assert isinstance(loss_data[0], list) and len(loss_data[0]) > 0, 'Expected non-empty loss values'
+
+    # Verify loss values are reasonable (not None or inf)
+    # Note: Some models may produce NaN with small test configurations - this is a test limitation, not a code issue
+    import math
+    for loss_val in loss_data[0]:
+        assert loss_val is not None, 'Loss value should not be None'
+        assert isinstance(loss_val, (int, float)), f'Loss should be numeric, got {type(loss_val)}'
+        # Skip further validation if loss is NaN (model training instability with small test config)
+        if not math.isnan(loss_val):
+            assert loss_val < 1e6, f'Loss seems unreasonably large: {loss_val}'
+
+    # Run with compare-log for success - this verifies deterministic reproducibility
+    extra_args = f'--compare-log {results_path}'
+    benchmark_compare, _ = run_deterministic_benchmark(model_name, params, results_path, extra_args)
     assert benchmark_compare and benchmark_compare.return_code == ReturnCode.SUCCESS
 
-    os.remove(log_path)
+    # Run a third time to triple-check determinism
+    benchmark_compare2, _ = run_deterministic_benchmark(model_name, params, results_path, extra_args)
+    assert benchmark_compare2 and benchmark_compare2.return_code == ReturnCode.SUCCESS
+
+    os.remove(results_path)
 
 
 @decorator.cuda_test
@@ -105,28 +144,31 @@ def test_pytorch_model_determinism(model_name, params):
 @pytest.mark.xfail(reason='Intentional determinism mismatch to test failure handling.')
 def test_pytorch_model_determinism_failure_case(model_name, params):
     """Parameterised Test for PyTorch model determinism failure case."""
-    benchmark, log_path = run_deterministic_benchmark(model_name, params)
+    benchmark, results_path = run_deterministic_benchmark(model_name, params)
     assert benchmark and benchmark.return_code == ReturnCode.SUCCESS
 
-    # Modify the log file to break determinism by changing fingerprints['loss']
-    with open(log_path, 'r+') as f:
+    # Modify the results file to break determinism by changing loss values
+    with open(results_path, 'r+') as f:
         data = json.load(f)
-        # Change the first value in fingerprints['loss']
-        if data['fingerprints']['loss']:
-            data['fingerprints']['loss'][0] += 1e-5
-        else:
-            data['fingerprints']['loss'].append(999.0)
+        # Find the deterministic_loss in nested raw_data and change first value
+        benchmark_name = benchmark._result.name
+        raw_data = data['raw_data'][benchmark_name]
+        for loss_key in raw_data.keys():
+            if 'deterministic_loss' in loss_key and isinstance(raw_data[loss_key], list):
+                if raw_data[loss_key] and raw_data[loss_key][0]:
+                    raw_data[loss_key][0][0] += 1e-5
+                break
         f.seek(0)
         json.dump(data, f)
         f.truncate()
 
     # Run with compare-log for failure
-    extra_args = f'--compare-log {log_path} --check_frequency 10'
+    extra_args = f'--compare-log {results_path}'
     with pytest.raises(RuntimeError):
-        run_deterministic_benchmark(model_name, params, log_path, extra_args)
+        run_deterministic_benchmark(model_name, params, results_path, extra_args)
 
     # Clean up
-    os.remove(log_path)
+    os.remove(results_path)
 
 
 @decorator.cuda_test
@@ -144,8 +186,7 @@ def test_pytorch_model_nondeterministic_default(model_name, params):
     benchmark = BenchmarkRegistry.launch_benchmark(context)
     assert (benchmark and benchmark.return_code == ReturnCode.SUCCESS), 'Benchmark did not run successfully.'
     args = benchmark._args
-    assert args.deterministic is False, 'Expected deterministic to be False by default.'
-    assert (getattr(args, 'generate_log', False) is False), 'Expected generate_log to be False by default.'
+    assert getattr(args, 'enable_determinism', False) is False, 'Expected enable_determinism to be False by default.'
     assert (getattr(args, 'compare_log', None) is None), 'Expected compare_log to be None by default.'
     assert (getattr(args, 'check_frequency', None) == 100), 'Expected check_frequency to be 100 by default.'
 

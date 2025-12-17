@@ -129,7 +129,8 @@ def main():
     if hasattr(benchmark, '_model_run_metadata'):
         logger.info(f'Run metadata: {benchmark._model_run_metadata}')
     if hasattr(benchmark, '_model_run_periodic'):
-        logger.info(f'Periodic fingerprints collected at {len(benchmark._model_run_periodic.get("step", []))} checkpoints')
+        num_checkpoints = len(benchmark._model_run_periodic.get("step", []))
+        logger.info(f'Periodic fingerprints collected at {num_checkpoints} checkpoints')
 
 
 if __name__ == '__main__':

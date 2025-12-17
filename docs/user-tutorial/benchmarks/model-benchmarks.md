@@ -44,7 +44,7 @@ SuperBench now supports deterministic training to ensure reproducibility across 
   - `--compare_log <results_file_path>`: Specifies the path to the reference file for comparison.
 
 - **Environment Variables:**
-  - (Implicity set when `enable-determinism` flag is set)
+  - (Implicitly set when `enable-determinism` flag is set)
   - `CUBLAS_WORKSPACE_CONFIG=:4096:8`: Ensures deterministic behavior in cuBLAS.
 
 #### Metrics

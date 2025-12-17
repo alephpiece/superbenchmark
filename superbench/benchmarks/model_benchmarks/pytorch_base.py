@@ -31,6 +31,7 @@ from superbench.benchmarks.model_benchmarks.model_base import Optimizer, ModelBe
 
 class PytorchBase(ModelBenchmark):
     """The base class of Pytorch model benchmarks."""
+
     def __init__(self, name, parameters=''):
         """Constructor.
 
@@ -81,6 +82,7 @@ class PytorchBase(ModelBenchmark):
         except Exception:
             logger.warning('SDP kernel not available')
             # Older PyTorch versions may not expose sdp_kernel; ignore in that case
+
     def _assign_model_run_metadata(self, precision, extra_keys=None):
         """Assign model_run_metadata for determinism fingerprinting/logging.
 
@@ -91,9 +93,7 @@ class PytorchBase(ModelBenchmark):
         Returns:
             None
         """
-        self._model_run_metadata = model_log_utils.build_model_metadata(
-            self._name, precision, self._args, extra_keys
-        )
+        self._model_run_metadata = model_log_utils.build_model_metadata(self._name, precision, self._args, extra_keys)
         return None
 
     def record_determinism_fingerprint(self, curr_step, loss, logits, periodic, check_frequency):
@@ -111,8 +111,8 @@ class PytorchBase(ModelBenchmark):
 
         # Record periodic fingerprint (loss and activation mean)
         model_log_utils.record_periodic_fingerprint(
-            curr_step, loss_value, logits, periodic, check_frequency,
-            getattr(self._args, 'enable_determinism', False), logger
+            curr_step, loss_value, logits, periodic, check_frequency, getattr(self._args, 'enable_determinism', False),
+            logger
         )
 
     def _finalize_periodic_logging(self, periodic, info_key='loss'):
@@ -151,7 +151,7 @@ class PytorchBase(ModelBenchmark):
             '--generate_log',
             action='store_true',
             default=False,
-            help='Generate consolidated deterministic reference results (stores all ranks raw_data in results-summary).',
+            help='Generate consolidated deterministic reference results (stores all ranks in results-summary).',
         )
         self._parser.add_argument(
             '--check_frequency',
@@ -250,13 +250,13 @@ class PytorchBase(ModelBenchmark):
                             if key not in self._result.raw_data:
                                 self._result.raw_data[key] = value
 
-                logger.info(f'Rank 0: Consolidated deterministic results from {dist.get_world_size()} ranks into results')
+                logger.info(f'Rank 0: Consolidated deterministic results from {dist.get_world_size()} ranks')
             else:
                 # Other ranks send their data to rank 0
                 dist.gather_object(raw_data_to_send, None, dst=0)
         else:
             # Non-distributed: data already in result, nothing to consolidate
-            logger.info(f'Deterministic results stored in results')
+            logger.info('Deterministic results stored in results')
 
     def _compare_deterministic_results(self):
         """Compare current deterministic metrics with reference results file.
@@ -267,7 +267,8 @@ class PytorchBase(ModelBenchmark):
         import torch.distributed as dist
 
         compare_log_path = self._args.compare_log
-        logger.info(f'Rank {self._global_rank if self._global_rank is not None else 0}: Loading reference results from {compare_log_path}')
+        rank = self._global_rank if self._global_rank is not None else 0
+        logger.info(f'Rank {rank}: Loading reference results from {compare_log_path}')
 
         # Track if this rank detected any failure
         has_failure = False
@@ -318,7 +319,8 @@ class PytorchBase(ModelBenchmark):
             logger.error(failure_msg)
             raise RuntimeError(failure_msg)
 
-        logger.info(f'Rank {self._global_rank if self._global_rank is not None else 0}: Determinism check PASSED - all checkpoints match')
+        rank = self._global_rank if self._global_rank is not None else 0
+        logger.info(f'Rank {rank}: Determinism check PASSED - all checkpoints match')
 
     def _preprocess(self):
         """Preprocess and apply PyTorch-specific defaults."""

@@ -4,7 +4,6 @@
 """Utility functions for deterministic model training and validation."""
 
 import json
-import torch
 
 
 def build_model_metadata(name, precision, args, extra_keys=None):
@@ -74,7 +73,9 @@ def record_step_loss(loss, curr_step, losses_list, logger=None):
         return None
 
 
-def record_periodic_fingerprint(curr_step, loss_value, logits, periodic_dict, check_frequency, enable_determinism, logger=None):
+def record_periodic_fingerprint(
+    curr_step, loss_value, logits, periodic_dict, check_frequency, enable_determinism, logger=None
+):
     """Record periodic fingerprints (loss and activation mean) for deterministic runs.
 
     Args:
@@ -107,8 +108,7 @@ def record_periodic_fingerprint(curr_step, loss_value, logits, periodic_dict, ch
     try:
         if logits is not None:
             act_mean = (
-                float(logits[0].detach().float().mean().item())
-                if hasattr(logits[0], 'detach') else float(logits[0])
+                float(logits[0].detach().float().mean().item()) if hasattr(logits[0], 'detach') else float(logits[0])
             )
             if logger:
                 logger.info(f'ActMean at step {curr_step}: {act_mean}')
@@ -223,10 +223,8 @@ def compare_raw_data_metrics(curr_raw_data, ref_raw_data, rank=None, logger=None
     # Determine metric prefix
     if rank is not None:
         metric_prefix = f'deterministic_loss_rank{rank}'
-        hex_prefix = f'deterministic_loss_hex_rank{rank}'
     else:
         metric_prefix = 'deterministic_loss'
-        hex_prefix = 'deterministic_loss_hex'
 
     # Check if deterministic metrics exist in reference
     if metric_prefix not in ref_raw_data:
@@ -263,13 +261,15 @@ def compare_raw_data_metrics(curr_raw_data, ref_raw_data, rank=None, logger=None
                             logger.debug(f'{key}[{run_idx},{step_idx}]: {curr_step_val} vs {ref_step_val}')
                         if curr_step_val != ref_step_val:
                             if isinstance(curr_step_val, (int, float)) and isinstance(ref_step_val, (int, float)):
+                                diff_val = abs(curr_step_val - ref_step_val)
                                 mismatches.append(
                                     f'{key}[run {run_idx}, checkpoint {step_idx}]: '
-                                    f'{repr(curr_step_val)} vs {repr(ref_step_val)} (diff: {abs(curr_step_val - ref_step_val)})'
+                                    f'{repr(curr_step_val)} vs {repr(ref_step_val)} (diff: {diff_val})'
                                 )
                             else:
                                 mismatches.append(
-                                    f'{key}[run {run_idx}, checkpoint {step_idx}]: {repr(curr_step_val)} vs {repr(ref_step_val)}'
+                                    f'{key}[run {run_idx}, checkpoint {step_idx}]: '
+                                    f'{repr(curr_step_val)} vs {repr(ref_step_val)}'
                                 )
 
     return mismatches
@@ -292,10 +292,9 @@ def apply_metadata_overrides(args, ref_metadata, logger=None):
         return 0
 
     override_params = [
-        'batch_size', 'seq_len', 'hidden_size', 'num_steps', 'num_warmup', 'check_frequency',
-        'num_classes', 'num_layers', 'num_hidden_layers', 'num_attention_heads',
-        'intermediate_size', 'input_size', 'bidirectional', 'seed', 'precision',
-        'deterministic_seed'
+        'batch_size', 'seq_len', 'hidden_size', 'num_steps', 'num_warmup', 'check_frequency', 'num_classes',
+        'num_layers', 'num_hidden_layers', 'num_attention_heads', 'intermediate_size', 'input_size', 'bidirectional',
+        'seed', 'precision', 'deterministic_seed'
     ]
 
     overridden_count = 0
