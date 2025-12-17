@@ -38,6 +38,11 @@ class PytorchBase(ModelBenchmark):
             name (str): benchmark name.
             parameters (str): benchmark parameters.
         """
+        # Set CUBLAS_WORKSPACE_CONFIG early, before parent init which might parse args
+        # This ensures it's set before any CUDA operations if determinism is enabled
+        if 'enable-determinism' in parameters or 'enable_determinism' in parameters:
+            os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
+
         super().__init__(name, parameters)
 
         self._framework = Framework.PYTORCH
@@ -53,8 +58,8 @@ class PytorchBase(ModelBenchmark):
 
     def _enable_deterministic_training(self):
         """Enable deterministic training settings for reproducible results."""
-        # Set CUBLAS_WORKSPACE_CONFIG before any CUDA operations to ensure deterministic cuBLAS behavior
-        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        # Set CUBLAS_WORKSPACE_CONFIG (should already be set in __init__, but ensure it's set as backup)
+        os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 
         if hasattr(self._args, 'deterministic_seed'):
             torch.manual_seed(self._args.deterministic_seed)
