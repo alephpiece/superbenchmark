@@ -3,16 +3,15 @@
 
 """Unified test for deterministic fingerprinting across all major PyTorch model benchmarks."""
 
-# Set CUBLAS_WORKSPACE_CONFIG before any imports to ensure deterministic cuBLAS behavior
-import os
-
-os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
-
 from tests.helper import decorator
+import os
 import tempfile
 import json
 import pytest
 from superbench.benchmarks import BenchmarkRegistry, Platform, Framework, ReturnCode
+
+# Set CUBLAS_WORKSPACE_CONFIG early to ensure deterministic cuBLAS behavior
+os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 
 
 def run_deterministic_benchmark(model_name, params, results_path=None, extra_args=None):
