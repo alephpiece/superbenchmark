@@ -31,7 +31,6 @@ from superbench.benchmarks.model_benchmarks.model_base import Optimizer, ModelBe
 
 class PytorchBase(ModelBenchmark):
     """The base class of Pytorch model benchmarks."""
-
     def __init__(self, name, parameters=''):
         """Constructor.
 

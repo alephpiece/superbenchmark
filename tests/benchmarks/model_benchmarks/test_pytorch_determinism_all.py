@@ -31,9 +31,7 @@ def run_deterministic_benchmark(model_name, params, results_path=None, extra_arg
     if benchmark and benchmark.return_code == ReturnCode.SUCCESS:
         # Convert to results-summary format with nested benchmark name
         result_dict = json.loads(benchmark._result.to_string())
-        summary_format = {
-            'raw_data': {}
-        }
+        summary_format = {'raw_data': {}}
         # Nest raw_data under benchmark name as results-summary.json does
         benchmark_name = result_dict['name']
         summary_format['raw_data'][benchmark_name] = result_dict['raw_data']
