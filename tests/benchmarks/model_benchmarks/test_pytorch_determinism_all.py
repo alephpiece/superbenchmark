@@ -5,6 +5,7 @@
 
 # Set CUBLAS_WORKSPACE_CONFIG before any imports to ensure deterministic cuBLAS behavior
 import os
+
 os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
 
 from tests.helper import decorator
