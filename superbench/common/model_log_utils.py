@@ -73,6 +73,40 @@ def record_step_loss(loss, curr_step, losses_list, logger=None):
         return None
 
 
+def _record_loss_fingerprint(curr_step, loss_value, periodic_dict, logger):
+    """Record loss fingerprint at current step."""
+    try:
+        if 'loss' in periodic_dict and isinstance(periodic_dict['loss'], list):
+            periodic_dict['loss'].append(loss_value if loss_value is not None else None)
+        else:
+            periodic_dict['loss'] = [loss_value if loss_value is not None else None]
+
+        if logger:
+            logger.info(f'Loss at step {curr_step}: {loss_value}')
+        periodic_dict.setdefault('step', []).append(curr_step)
+    except Exception:
+        if logger:
+            logger.warning(f'Unable to log loss at curr_step {curr_step}')
+
+
+def _record_activation_fingerprint(curr_step, logits, periodic_dict, logger):
+    """Record activation mean fingerprint at current step."""
+    try:
+        if logits is not None:
+            act_mean = (
+                float(logits[0].detach().float().mean().item()) if hasattr(logits[0], 'detach') else float(logits[0])
+            )
+            if logger:
+                logger.info(f'ActMean at step {curr_step}: {act_mean}')
+            periodic_dict.setdefault('act_mean', []).append(act_mean)
+        else:
+            periodic_dict.setdefault('act_mean', []).append(None)
+    except Exception:
+        if logger:
+            logger.warning(f'Unable to log act_mean at curr_step {curr_step}')
+        periodic_dict.setdefault('act_mean', []).append(None)
+
+
 def record_periodic_fingerprint(
     curr_step, loss_value, logits, periodic_dict, check_frequency, enable_determinism, logger=None
 ):
@@ -90,36 +124,50 @@ def record_periodic_fingerprint(
     if not enable_determinism or (curr_step % check_frequency != 0):
         return
 
-    # 1) Loss fingerprint (only at fingerprinting frequency)
-    try:
-        if 'loss' in periodic_dict and isinstance(periodic_dict['loss'], list):
-            periodic_dict['loss'].append(loss_value if loss_value is not None else None)
-        else:
-            periodic_dict['loss'] = [loss_value if loss_value is not None else None]
+    _record_loss_fingerprint(curr_step, loss_value, periodic_dict, logger)
+    _record_activation_fingerprint(curr_step, logits, periodic_dict, logger)
 
-        if logger:
-            logger.info(f'Loss at step {curr_step}: {loss_value}')
-        periodic_dict.setdefault('step', []).append(curr_step)
-    except Exception:
-        if logger:
-            logger.warning(f'Unable to log loss at curr_step {curr_step}')
 
-    # 2) Activation fingerprint: mean over logits for sample 0
+def _load_and_validate_reference_file(filepath):
+    """Load reference JSON file and validate structure."""
     try:
-        if logits is not None:
-            act_mean = (
-                float(logits[0].detach().float().mean().item()) if hasattr(logits[0], 'detach') else float(logits[0])
-            )
-            if logger:
-                logger.info(f'ActMean at step {curr_step}: {act_mean}')
-            periodic_dict.setdefault('act_mean', []).append(act_mean)
-        else:
-            # Keep lists aligned by appending None when activation not available
-            periodic_dict.setdefault('act_mean', []).append(None)
-    except Exception:
-        if logger:
-            logger.warning(f'Unable to log act_mean at curr_step {curr_step}')
-        periodic_dict.setdefault('act_mean', []).append(None)
+        with open(filepath, 'r') as f:
+            ref_results = json.load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f'Reference results file not found: {filepath}. '
+            f'Make sure you have run the benchmark with --enable-determinism first to generate reference results.'
+        )
+    except json.JSONDecodeError as e:
+        raise ValueError(f'Invalid JSON in reference results file {filepath}: {e}')
+
+    if 'raw_data' not in ref_results:
+        raise ValueError(f'Reference file {filepath} does not contain "raw_data" section')
+
+    return ref_results['raw_data']
+
+
+def _find_benchmark_raw_data(ref_raw_data_section, benchmark_name):
+    """Find benchmark raw_data in nested format."""
+    for bm_name in ref_raw_data_section:
+        if benchmark_name in bm_name:
+            return ref_raw_data_section[bm_name]
+
+    raise ValueError(
+        f'Reference file does not contain raw_data for benchmark matching "{benchmark_name}". '
+        f'Available benchmarks: {list(ref_raw_data_section.keys())}'
+    )
+
+
+def _extract_reference_metadata(ref_raw_data, rank):
+    """Extract metadata from reference raw_data."""
+    metadata_key = f'metadata_rank{rank}' if rank is not None else 'metadata'
+
+    if metadata_key in ref_raw_data:
+        return _extract_metadata_from_raw_data(ref_raw_data[metadata_key])
+    elif 'metadata_rank0' in ref_raw_data:
+        return _extract_metadata_from_raw_data(ref_raw_data['metadata_rank0'])
+    return None
 
 
 def load_reference_results(filepath, benchmark_name, rank=None, logger=None):
@@ -138,51 +186,9 @@ def load_reference_results(filepath, benchmark_name, rank=None, logger=None):
         FileNotFoundError: If reference file doesn't exist.
         ValueError: If reference file is invalid or missing data.
     """
-    try:
-        with open(filepath, 'r') as f:
-            ref_results = json.load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f'Reference results file not found: {filepath}. '
-            f'Make sure you have run the benchmark with --enable-determinism first to generate reference results.'
-        )
-    except json.JSONDecodeError as e:
-        raise ValueError(f'Invalid JSON in reference results file {filepath}: {e}')
-
-    # Get raw_data section
-    if 'raw_data' not in ref_results:
-        raise ValueError(f'Reference file {filepath} does not contain "raw_data" section')
-
-    ref_raw_data_section = ref_results['raw_data']
-
-    # Find benchmark in nested format
-    ref_raw_data = None
-    for bm_name in ref_raw_data_section:
-        if benchmark_name in bm_name:
-            ref_raw_data = ref_raw_data_section[bm_name]
-            break
-
-    if ref_raw_data is None:
-        raise ValueError(
-            f'Reference file does not contain raw_data for benchmark matching "{benchmark_name}". '
-            f'Available benchmarks: {list(ref_raw_data_section.keys())}'
-        )
-
-    # Extract metadata
-    ref_metadata = None
-    if rank is not None:
-        metadata_key = f'metadata_rank{rank}'
-    else:
-        metadata_key = 'metadata'
-
-    if metadata_key in ref_raw_data:
-        metadata_list = ref_raw_data[metadata_key]
-        ref_metadata = _extract_metadata_from_raw_data(metadata_list)
-    elif 'metadata_rank0' in ref_raw_data:
-        # Fallback to rank 0 metadata
-        metadata_list = ref_raw_data['metadata_rank0']
-        ref_metadata = _extract_metadata_from_raw_data(metadata_list)
-
+    ref_raw_data_section = _load_and_validate_reference_file(filepath)
+    ref_raw_data = _find_benchmark_raw_data(ref_raw_data_section, benchmark_name)
+    ref_metadata = _extract_reference_metadata(ref_raw_data, rank)
     return ref_raw_data, ref_metadata
 
 
@@ -206,6 +212,49 @@ def _extract_metadata_from_raw_data(metadata_list):
     return None
 
 
+def _compare_checkpoint_values(key, run_idx, curr_run, ref_run, logger):
+    """Compare checkpoint values between current and reference runs."""
+    mismatches = []
+
+    if len(curr_run) != len(ref_run):
+        mismatches.append(f'{key}[run {run_idx}]: checkpoint count mismatch ({len(curr_run)} vs {len(ref_run)})')
+        return mismatches
+
+    for step_idx, (curr_step_val, ref_step_val) in enumerate(zip(curr_run, ref_run)):
+        if logger:
+            logger.debug(f'{key}[{run_idx},{step_idx}]: {curr_step_val} vs {ref_step_val}')
+        if curr_step_val != ref_step_val:
+            if isinstance(curr_step_val, (int, float)) and isinstance(ref_step_val, (int, float)):
+                diff_val = abs(curr_step_val - ref_step_val)
+                mismatches.append(
+                    f'{key}[run {run_idx}, checkpoint {step_idx}]: '
+                    f'{repr(curr_step_val)} vs {repr(ref_step_val)} (diff: {diff_val})'
+                )
+            else:
+                mismatches.append(
+                    f'{key}[run {run_idx}, checkpoint {step_idx}]: '
+                    f'{repr(curr_step_val)} vs {repr(ref_step_val)}'
+                )
+
+    return mismatches
+
+
+def _compare_metric_lists(key, curr_val, ref_val, logger):
+    """Compare list metrics between current and reference data."""
+    mismatches = []
+
+    if len(curr_val) != len(ref_val):
+        mismatches.append(f'{key}: run count mismatch ({len(curr_val)} vs {len(ref_val)})')
+        return mismatches
+
+    for run_idx in range(len(curr_val)):
+        curr_run = curr_val[run_idx]
+        ref_run = ref_val[run_idx]
+        mismatches.extend(_compare_checkpoint_values(key, run_idx, curr_run, ref_run, logger))
+
+    return mismatches
+
+
 def compare_raw_data_metrics(curr_raw_data, ref_raw_data, rank=None, logger=None):
     """Compare current and reference raw_data metrics for determinism validation.
 
@@ -219,58 +268,21 @@ def compare_raw_data_metrics(curr_raw_data, ref_raw_data, rank=None, logger=None
         list: List of mismatch descriptions, empty if all match.
     """
     mismatches = []
+    metric_prefix = f'deterministic_loss_rank{rank}' if rank is not None else 'deterministic_loss'
 
-    # Determine metric prefix
-    if rank is not None:
-        metric_prefix = f'deterministic_loss_rank{rank}'
-    else:
-        metric_prefix = 'deterministic_loss'
-
-    # Check if deterministic metrics exist in reference
     if metric_prefix not in ref_raw_data:
         raise ValueError(
             f'Reference results do not contain deterministic metrics ({metric_prefix}) in raw_data. '
             f'Make sure the reference was run with --enable-determinism flag.'
         )
 
-    # Compare deterministic raw data
     for key in curr_raw_data:
         if key.startswith('deterministic_') and key in ref_raw_data:
             curr_val = curr_raw_data[key]
             ref_val = ref_raw_data[key]
 
             if isinstance(curr_val, list) and isinstance(ref_val, list):
-                # Raw data is list of lists for multiple runs
-                if len(curr_val) != len(ref_val):
-                    mismatches.append(f'{key}: run count mismatch ({len(curr_val)} vs {len(ref_val)})')
-                    continue
-
-                for run_idx in range(len(curr_val)):
-                    curr_run = curr_val[run_idx]
-                    ref_run = ref_val[run_idx]
-
-                    if len(curr_run) != len(ref_run):
-                        mismatches.append(
-                            f'{key}[run {run_idx}]: checkpoint count mismatch ({len(curr_run)} vs {len(ref_run)})'
-                        )
-                        continue
-
-                    # Compare each checkpoint value for exact equality
-                    for step_idx, (curr_step_val, ref_step_val) in enumerate(zip(curr_run, ref_run)):
-                        if logger:
-                            logger.debug(f'{key}[{run_idx},{step_idx}]: {curr_step_val} vs {ref_step_val}')
-                        if curr_step_val != ref_step_val:
-                            if isinstance(curr_step_val, (int, float)) and isinstance(ref_step_val, (int, float)):
-                                diff_val = abs(curr_step_val - ref_step_val)
-                                mismatches.append(
-                                    f'{key}[run {run_idx}, checkpoint {step_idx}]: '
-                                    f'{repr(curr_step_val)} vs {repr(ref_step_val)} (diff: {diff_val})'
-                                )
-                            else:
-                                mismatches.append(
-                                    f'{key}[run {run_idx}, checkpoint {step_idx}]: '
-                                    f'{repr(curr_step_val)} vs {repr(ref_step_val)}'
-                                )
+                mismatches.extend(_compare_metric_lists(key, curr_val, ref_val, logger))
 
     return mismatches
 

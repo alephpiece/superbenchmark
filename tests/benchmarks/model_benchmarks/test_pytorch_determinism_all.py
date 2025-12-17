@@ -45,7 +45,8 @@ def run_deterministic_benchmark(model_name, params, results_path=None, extra_arg
 MODELS = [
     (
         'resnet18',
-        '--batch_size 2 --image_size 32 --num_classes 2 --num_warmup 1 --num_steps 20 --model_action train --precision float32',
+        '--batch_size 2 --image_size 32 --num_classes 2 --num_warmup 1 --num_steps 20 '
+        '--model_action train --precision float32',
     ),
     (
         'lstm',
@@ -70,7 +71,8 @@ MODELS = [
     ),
     (
         'bert-base',
-        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 --model_action train --precision float32',
+        '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 '
+        '--model_action train --precision float32',
     ),
 ]
 

@@ -271,7 +271,7 @@ class PytorchBase(ModelBenchmark):
 
         # Track if this rank detected any failure
         has_failure = False
-        failure_msg = ""
+        failure_msg = ''
 
         try:
             # Load reference results and extract raw_data
@@ -346,8 +346,7 @@ class PytorchBase(ModelBenchmark):
                 logger.info('Failed to enable deterministic training in centralized preprocess')
 
     def _handle_deterministic_log_options(self):
-        """
-        Handle deterministic log options.
+        """Handle deterministic log options.
 
         In deterministic mode, metrics are automatically added to the results file.
         The --compare-log option can be used to compare against a previous results file.
