@@ -19,7 +19,7 @@ class TestRecordStepLoss:
 
         # Create a mock object that raises exception on conversion
         bad_loss = Mock()
-        bad_loss.detach.side_effect = RuntimeError("Conversion failed")
+        bad_loss.detach.side_effect = RuntimeError('Conversion failed')
 
         result = model_log_utils.record_step_loss(bad_loss, curr_step=5, losses_list=losses_list, logger=logger)
 
