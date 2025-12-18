@@ -12,6 +12,8 @@ from superbench.benchmarks import BenchmarkRegistry, Platform, Framework, Return
 
 # Set CUBLAS_WORKSPACE_CONFIG early to ensure deterministic cuBLAS behavior
 os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
+# Set PYTORCH_CUDA_ALLOC_CONF to avoid memory fragmentation
+os.environ.setdefault('PYTORCH_CUDA_ALLOC_CONF', 'expandable_segments:True')
 
 
 def run_deterministic_benchmark(model_name, params, results_path=None, extra_args=None):
