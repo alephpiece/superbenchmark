@@ -64,9 +64,12 @@ MODELS = [
         '--batch_size 1 --num_classes 2 --seq_len 4 --num_warmup 1 --num_steps 20 '
         '--model_action train --precision float32',
     ),
-    (
+    pytest.param(
         'llama2-7b',
         '--batch_size 1 --seq_len 1 --num_warmup 1 --num_steps 20 --precision float32 --model_action train',
+        marks=pytest.mark.skip(
+            reason='Requires >26GB GPU memory for 7B model, and float16 incompatible with deterministic mode'
+        ),
     ),
     (
         'mixtral-8x7b',
