@@ -12,7 +12,6 @@ from superbench.common import model_log_utils
 
 class TestRecordStepLoss:
     """Tests for record_step_loss function."""
-
     def test_record_loss_conversion_failure(self):
         """Test exception handling when loss conversion fails."""
         logger = Mock()
@@ -31,7 +30,6 @@ class TestRecordStepLoss:
 
 class TestLoadAndValidateReferenceFile:
     """Tests for _load_and_validate_reference_file function."""
-
     def test_file_not_found(self):
         """Test FileNotFoundError when reference file doesn't exist."""
         with pytest.raises(FileNotFoundError, match='Reference results file not found'):
@@ -58,7 +56,6 @@ class TestLoadAndValidateReferenceFile:
 
 class TestFindBenchmarkRawData:
     """Tests for _find_benchmark_raw_data function."""
-
     def test_benchmark_not_found(self):
         """Test ValueError when benchmark name not found in reference."""
         ref_raw_data = {'pytorch-resnet18': {}, 'pytorch-bert': {}}
@@ -69,7 +66,6 @@ class TestFindBenchmarkRawData:
 
 class TestExtractMetadataFromRawData:
     """Tests for _extract_metadata_from_raw_data function."""
-
     def test_extract_from_list_of_dicts(self):
         """Test extracting metadata from list of dicts format."""
         metadata_list = [{'batch_size': 32, 'seed': 42}]
@@ -96,7 +92,6 @@ class TestExtractMetadataFromRawData:
 
 class TestCompareCheckpointValues:
     """Tests for _compare_checkpoint_values function."""
-
     def test_length_mismatch(self):
         """Test detection of checkpoint count mismatch."""
         logger = Mock()
@@ -123,7 +118,6 @@ class TestCompareCheckpointValues:
 
 class TestApplyMetadataOverrides:
     """Tests for apply_metadata_overrides function."""
-
     def test_no_metadata_provided(self):
         """Test warning when no metadata is provided."""
         logger = Mock()
