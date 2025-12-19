@@ -139,6 +139,7 @@ class PytorchBase(ModelBenchmark):
         )
         self._parser.add_argument(
             '--deterministic_seed',
+            '--deterministic-seed',
             type=int,
             default=42,
             required=False,
@@ -153,12 +154,14 @@ class PytorchBase(ModelBenchmark):
         )
         self._parser.add_argument(
             '--generate_log',
+            '--generate-log',
             action='store_true',
             default=False,
             help='Generate consolidated deterministic reference results (stores all ranks in results-summary).',
         )
         self._parser.add_argument(
             '--check_frequency',
+            '--check-frequency',
             type=int,
             default=100,
             required=False,
