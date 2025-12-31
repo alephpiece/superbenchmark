@@ -1,0 +1,66 @@
+superbench:
+  enable: null
+  monitor:
+    enable: false
+  var:
+    common_model_config:
+      enable: true
+      frameworks:
+        - pytorch
+      modes:
+        - train
+      precision:
+        - float32
+        - float16
+      batch_size: 32
+  benchmarks:
+    # Example 1: Load BERT from HuggingFace Hub using the default model
+    pytorch-bert-hf-base:
+      <<: *common_model_config
+      models:
+        - bert-base
+      parameters:
+        model_source: huggingface
+        model_identifier: bert-base-uncased
+        num_classes: 2
+        seq_len: 128
+        run_count: 10
+    
+    # Example 2: Load a different BERT variant
+    pytorch-bert-hf-large:
+      <<: *common_model_config
+      models:
+        - bert-large
+      parameters:
+        model_source: huggingface
+        model_identifier: bert-large-uncased
+        num_classes: 2
+        seq_len: 128
+        run_count: 10
+    
+    # Example 3: Load a distilled BERT model
+    pytorch-bert-hf-distilled:
+      <<: *common_model_config
+      models:
+        - bert-distilled
+      parameters:
+        model_source: huggingface
+        model_identifier: distilbert-base-uncased
+        num_classes: 2
+        seq_len: 128
+        run_count: 10
+        trust_remote_code: false
+    
+    # Example 4: Traditional in-house BERT (no HF loading)
+    pytorch-bert-inhouse:
+      <<: *common_model_config
+      models:
+        - bert
+      parameters:
+        num_classes: 2
+        hidden_size: 768
+        num_hidden_layers: 12
+        num_attention_heads: 12
+        intermediate_size: 3072
+        seq_len: 128
+        run_count: 10

@@ -1,0 +1,782 @@
+version: v0.12
+superbench:
+  enable:
+  # Model benchmarks - all enabled
+  # - model-benchmarks:lstm
+  # - model-benchmarks:resnet
+  # - model-benchmarks:densenet
+  # - model-benchmarks:vgg
+  # - model-benchmarks:stress
+  # - model-benchmarks:bert@base-fp8
+  # - model-benchmarks:bert@base-fp16
+  # - model-benchmarks:bert@base-fp32
+  # - model-benchmarks:bert@large-fp8
+  # - model-benchmarks:bert@large-fp16
+  # - model-benchmarks:bert@large-fp32
+  # - model-benchmarks:gpt@small-fp8
+  # - model-benchmarks:gpt@small-fp16
+  # - model-benchmarks:gpt@small-fp32
+  # - model-benchmarks:gpt@large-fp8
+  # - model-benchmarks:gpt@large-fp16
+  # - model-benchmarks:gpt@large-fp32
+  # - model-benchmarks:llama2-7b@fp8
+  # - model-benchmarks:llama2-7b@fp16
+  # - model-benchmarks:llama2-7b@fp32
+  # - model-benchmarks:lstm-deterministic-generate
+  # - model-benchmarks:bert-deterministic-generate
+  # microbenchmark - computation
+  # - kernel-launch                         # 01:14
+  # - gemm-flops                            # 13:40
+  # - cudnn-function                        # 03:58
+  # - cublaslt-gemm                         # 03:16
+  # - cublas-function                       # 01:40
+  # - matmul                                # 00:09
+  # - gpu-burn                              # 01:40
+  # microbenchmark - communication
+  # - cpu-memory-bw-latency                 # 03:20
+  # - cpu-stream:numa0                      # 00:13
+  # - cpu-stream:numa1                      # 00:13
+  # - cpu-stream:cross-socket0              # 00:22
+  # - cpu-stream:cross-socket1              # 00:23
+  # - cpu-stream:spread128                  # 00:09
+  # - cpu-stream:spread64                   # 00:09
+  # # - mem-bw                              # 00:50
+  # - gpu-copy-bw:perf                      # 00:22
+  # - gpu-copy-bw:correctness               # 00:07
+  # - gpu-stream:perf                       # 00:58
+  # - gpu-stream:correctness                # 00:07
+  # - nvbandwidth                           # 03:54
+  # # NCCL
+  # - nccl-bw:nvlink                        # 00:55
+  # - nccl-bw:nvlink-allgather              # 00:43
+  # - nccl-bw:nvlink-broadcast              # 01:03
+  # - nccl-bw:nvlink-reduce                 # 01:03
+  # - nccl-bw:nvlink-reducescatter          # 01:03
+  # - nccl-bw:nvlink-alltoall               # 01:03
+  # # microbenchmark - comput-comm. overlap
+  # - computation-communication-overlap     # 04:50
+  # - sharding-matmul                       # 00:25
+  # microbenchmark - storage
+  # - disk-benchmark                       # 18:47
+  # model benchmark - inference
+  # - ort-inference                         # 02:24
+  # - tensorrt-inference                    # 02:03:33
+  # - dist-inference                        # 00:35
+  # model benchmark - training
+  # - model-benchmarks:gpt@small-fp8          #02:16
+  # - model-benchmarks:gpt@small-fp16         #02:23
+  # - model-benchmarks:gpt@small-fp32         #02:20
+  # - model-benchmarks:gpt@large-fp8          #03:11
+  # - model-benchmarks:gpt@large-fp16         #03:05
+  # - model-benchmarks:gpt@large-fp32         #03:32
+  # - model-benchmarks:bert@base-fp8          #02:41
+  # - model-benchmarks:bert@base-fp16         #02:38
+  # - model-benchmarks:bert@base-fp32         #03:27
+  # - model-benchmarks:bert@large-fp8         #03:10
+  # - model-benchmarks:bert@large-fp16        #03:05
+  # - model-benchmarks:bert@large-fp32        #03:16
+  # - model-benchmarks:llama2-7b@fp8          #04:56
+  # - model-benchmarks:llama2-7b@fp16         #05:19
+  # - model-benchmarks:lstm                 # 02:23
+  # - model-benchmarks:resnet               # 25:40
+  # - model-benchmarks:densenet             # 07:51
+  # - model-benchmarks:vgg                  # 11:51
+  - model-benchmarks:lstm-deterministic-generate
+  # - model-benchmarks:lstm-deterministic-compare
+  # - model-benchmarks:bert-deterministic-generate
+  # - model-benchmarks:bert-deterministic-compare
+  # - model-benchmarks:resnet-deterministic-generate
+  # - model-benchmarks:resnet-deterministic-compare
+  # - model-benchmarks:gpt-deterministic-generate
+  # - model-benchmarks:gpt-deterministic-compare
+  # - model-benchmarks:llama-deterministic-generate
+  # - model-benchmarks:llama-deterministic-compare
+  monitor:
+    enable: false
+    sample_duration: 1
+    sample_interval: 10
+  var:
+    default_timeout: &default_timeout 600
+    default_local_mode: &default_local_mode
+      modes:
+      - name: local
+        proc_num: 2
+        prefix: CUDA_VISIBLE_DEVICES={proc_rank}
+        parallel: yes
+    default_pytorch_mode: &default_pytorch_mode
+      modes:
+      - name: torch.distributed
+        proc_num: 2
+        node_num: 1
+        env:
+          NCCL_DEBUG: WARN
+          TORCH_NCCL_ASYNC_ERROR_HANDLING: '0'
+      frameworks: [pytorch]
+    model_ddp_parameter: &model_ddp_param
+      duration: 0
+      num_warmup: 128
+      num_steps: 512
+      sample_count: 8192
+      batch_size: 128
+      precision: [float32, float16]
+      model_action: [train]
+      pin_memory: yes
+      num_workers: 0
+    nccl_parameter: &nccl_param
+      minbytes: 1K
+      maxbytes: 16G
+      stepfactor: 2
+      check: 1
+      warmup_iters: 20
+      iters: 100
+    nccl_mode_env: &nccl_mode_env
+      UCX_IB_GID_INDEX: '0'
+      UCX_NET_DEVICES: 'mlx5_ib0:1'
+    deterministic_parameter_generate: &deterministic_parameter_generate
+      enable_determinism: true
+      deterministic_seed: 42
+      generate_log: ./outputs/deterministic_ref.json
+    deterministic_parameter_compare: &deterministic_parameter_compare
+      enable_determinism: true
+      compare_log: ./outputs/deterministic_ref.json
+  benchmarks:
+    # microbenchmark - computation
+    kernel-launch:
+      <<: *default_local_mode
+      timeout: *default_timeout
+    gemm-flops:
+      <<: *default_local_mode
+      timeout: 1500
+    cudnn-function:
+      <<: *default_local_mode
+      timeout: *default_timeout
+    cublaslt-gemm:
+      <<: *default_local_mode
+      timeout: 1200
+      parameters:
+        in_types: ['fp32', 'fp16', 'bf16', 'fp8e4m3', 'fp8e5m2', 'fp4e2m1']
+        shapes:
+        - 4096,4096,4096
+        - 8192,8192,8192
+        - 16384,16384,16384
+        - 32:2048,4608,12288
+        - 32:2048,12288,1536
+    cublas-function:
+      <<: *default_local_mode
+      timeout: *default_timeout
+    matmul:
+      <<: *default_local_mode
+      timeout: *default_timeout
+      frameworks: [pytorch]
+    gpu-burn:
+      timeout: 1800
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        time: 90
+        doubles: true
+        tensor_core: true
+    # microbenchmark - communication
+    cpu-memory-bw-latency:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        tests:
+        - bandwidth_matrix
+        - latency_matrix
+        - max_bandwidth
+    cpu-stream:numa0:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 0
+        cores: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63
+    cpu-stream:numa1:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 1
+        cores: 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127
+    cpu-stream:cross-socket0:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 0
+        cores: 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127
+    cpu-stream:cross-socket1:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 1
+        cores: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63
+    cpu-stream:spread128:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 0 1
+        cores: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127
+    cpu-stream:spread64:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        cpu_arch: neo2
+        numa_mem_nodes: 0 1
+        cores: 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62 64 66 68 70 72 74 76 78 80 82 84 86 88 90 92 94 96 98 100 102 104 106 108 110 112 114 116 118 120 122 124 126
+    nvbandwidth:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        use_mean: true
+        buffer_size: 128
+        num_loops: 10
+    gpu-copy-bw:perf:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        mem_type: [htod, dtoh, dtod]
+        copy_type: [sm, dma]
+    gpu-copy-bw:correctness:
+      timeout: *default_timeout
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        mem_type: [htod, dtoh, dtod]
+        copy_type: [sm, dma]
+        size: 4096
+        num_warm_up: 0
+        num_loops: 1
+        check_data: true
+    gpu-stream:perf:
+      timeout: 600
+      modes:
+      - name: local
+        parallel: false
+      parameters:
+        num_warm_up: 10
+        num_loops: 40
+        size: 4294967296
+    gpu-stream:correctness:
+      timeout: 600
+      modes:
+      - name: local
+        parallel: false
+      parameters:
+        num_warm_up: 0
+        num_loops: 1
+        size: 1048576
+        check_data: true
+    nccl-bw:nvlink:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+    nccl-bw:nvlink-allgather:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+        operation: allgather
+    nccl-bw:nvlink-broadcast:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+        operation: broadcast
+    nccl-bw:nvlink-reduce:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+        operation: reduce
+    nccl-bw:nvlink-reducescatter:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+        operation: reducescatter
+    nccl-bw:nvlink-alltoall:
+      timeout: *default_timeout
+      modes:
+      - name: mpi
+        proc_num: 2
+        node_num: 1
+        env:
+          <<: *nccl_mode_env
+      parameters:
+        <<: *nccl_param
+        operation: alltoall
+    # microbenchmark - comput-comm. overlap
+    computation-communication-overlap:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+    sharding-matmul:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+    # microbenchmark - storage
+    disk-benchmark:
+      timeout: 2400
+      modes:
+      - name: local
+        parallel: no
+      parameters:
+        block_devices:
+        - /dev/nvme0n1
+        - /dev/nvme1n1
+        - /dev/nvme2n1
+        - /dev/nvme3n1
+        - /dev/nvme4n1
+        - /dev/nvme5n1
+        - /dev/nvme6n1
+        - /dev/nvme7n1
+        seq_read_runtime: 60
+        rand_read_runtime: 60
+    # model benchmark - inference
+    ort-inference:
+      <<: *default_local_mode
+      timeout: *default_timeout
+    tensorrt-inference:
+      <<: *default_local_mode
+      timeout: 14400
+      parameters:
+        pytorch_models:
+        - resnet50
+        - resnet101
+        - resnet152
+        - densenet169
+        - densenet201
+        - bert-base
+        - bert-large
+        seq_length: 224
+        batch_size: 32
+        precision: fp16
+        trtexec_args: verbose
+        # trtexec_args: "--verbose --exportTimes=timing.json --percentile=99"
+    dist-inference:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+      parameters:
+        batch_size: 80
+        input_size: 128
+        hidden_size: 128
+        num_layers: 50
+        num_steps: 10000
+        precision: float16
+    # model benchmark - training
+    model-benchmarks:lstm:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+      models:
+      - lstm
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 1024
+        input_size: 224
+        hidden_size: 1000
+        seq_len: 32
+    model-benchmarks:resnet:
+      <<: *default_pytorch_mode
+      timeout: 3000
+      models:
+      - resnet50
+      - resnet101
+      - resnet152
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 384
+    model-benchmarks:densenet:
+      <<: *default_pytorch_mode
+      timeout: 1000
+      models:
+      - densenet169
+      - densenet201
+      parameters:
+        <<: *model_ddp_param
+    model-benchmarks:vgg:
+      <<: *default_pytorch_mode
+      timeout: 1500
+      models:
+      - vgg11
+      - vgg13
+      - vgg16
+      - vgg19
+      parameters:
+        <<: *model_ddp_param
+    model-benchmarks:stress:
+      <<: *default_pytorch_mode
+      timeout: 7200
+      models:
+      - gpt2-large
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 128
+        seq_len: 224
+    model-benchmarks:bert@base-fp8:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-base
+      parameters:
+        <<: *model_ddp_param
+        precision: [fp8_hybrid]
+        batch_size: 2304
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:bert@base-fp16:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-base
+      parameters:
+        <<: *model_ddp_param
+        precision: [float16]
+        batch_size: 2048
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:bert@base-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-base
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 1152
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:bert@large-fp8:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [fp8_hybrid]
+        batch_size: 1024
+        seq_len: 224
+        num_steps: 256
+    model-benchmarks:bert@large-fp16:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [float16]
+        batch_size: 512
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:bert@large-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 384
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@small-fp8:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-small
+      parameters:
+        <<: *model_ddp_param
+        precision: [fp8_hybrid]
+        batch_size: 1024
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@small-fp16:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-small
+      parameters:
+        <<: *model_ddp_param
+        precision: [float16]
+        batch_size: 1024
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@small-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-small
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 640
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@large-fp8:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [fp8_hybrid]
+        batch_size: 256
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@large-fp16:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [float16]
+        batch_size: 256
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:gpt@large-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1200
+      models:
+      - gpt2-large
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        seq_len: 224
+    model-benchmarks:llama2-7b@fp8:
+      <<: *default_pytorch_mode
+      timeout: 1500
+      models:
+      - llama2-7b
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 72
+        num_steps: 256
+        seq_len: 256
+        precision: [fp8_hybrid]
+    model-benchmarks:llama2-7b@fp16:
+      <<: *default_pytorch_mode
+      timeout: 1500
+      models:
+      - llama2-7b
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 72
+        num_steps: 256
+        seq_len: 256
+        precision: [float16]
+    model-benchmarks:llama2-7b@fp32:
+      <<: *default_pytorch_mode
+      timeout: 1500
+      models:
+      - llama2-7b
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 24
+        num_steps: 256
+        seq_len: 256
+        precision: [float32]
+    model-benchmarks:lstm-deterministic-generate:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+      models:
+      - lstm
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 32
+        input_size: 128
+        hidden_size: 512
+        seq_len: 16
+        num_warmup: 5
+        num_steps: 100
+        check_frequency: 20
+        precision: [float32]
+        enable_determinism: true
+        deterministic_seed: 42
+        generate_log: true
+    model-benchmarks:lstm-deterministic-compare:
+      <<: *default_pytorch_mode
+      timeout: *default_timeout
+      models:
+      - lstm
+      parameters:
+        <<: *model_ddp_param
+        batch_size: 32
+        input_size: 128
+        hidden_size: 512
+        seq_len: 16
+        num_warmup: 5
+        num_steps: 100
+        check_frequency: 20
+        precision: [float32]
+        enable_determinism: true
+        deterministic_seed: 42
+        compare_log: ./outputs/lstm_deterministic_ref.json
+    model-benchmarks:bert-deterministic-generate:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-base
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        seq_len: 16
+        enable_determinism: true
+        deterministic_seed: 42
+        generate_log: ./outputs/bert_deterministic_ref.json
+    model-benchmarks:bert-deterministic-compare:
+      # model-benchmarks:bert@base-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - bert-base
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        seq_len: 32
+        enable_determinism: true
+        deterministic_seed: 42
+        check_frequency: 70
+        compare_log: ./outputs/bert_deterministic_ref.json
+    model-benchmarks:resnet-deterministic-generate:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - resnet50
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        enable_determinism: true
+        deterministic_seed: 42
+        generate_log: ./outputs/resnet_deterministic_ref.json
+        check_frequency: 50
+    model-benchmarks:resnet-deterministic-compare:
+      # model-benchmarks:bert@base-fp32:
+      <<: *default_pytorch_mode
+      timeout: 3000
+      models:
+      - resnet50
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        enable_determinism: true
+        deterministic_seed: 42
+        check_frequency: 70
+        compare_log: ./outputs/resnet_deterministic_ref.json
+    model-benchmarks:gpt-deterministic-generate:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - gpt2-small
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        enable_determinism: true
+        deterministic_seed: 42
+        generate_log: ./outputs/gpt_deterministic_ref.json
+        check_frequency: 50
+    model-benchmarks:gpt-deterministic-compare:
+      # model-benchmarks:bert@base-fp32:
+      <<: *default_pytorch_mode
+      timeout: 3000
+      models:
+      - gpt2-small
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        enable_determinism: true
+        deterministic_seed: 42
+        check_frequency: 50
+        compare_log: ./outputs/gpt_deterministic_ref.json
+    model-benchmarks:llama-deterministic-generate:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - llama2-7b
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        seq_len: 224
+        enable_determinism: true
+        deterministic_seed: 42
+        generate_log: ./outputs/llama_deterministic_ref.json
+        check_frequency: 50
+    model-benchmarks:llama-deterministic-compare:
+      # model-benchmarks:bert@base-fp32:
+      <<: *default_pytorch_mode
+      timeout: 1800
+      models:
+      - llama2-7b
+      parameters:
+        <<: *model_ddp_param
+        precision: [float32]
+        batch_size: 128
+        num_steps: 256
+        enable_determinism: true
+        deterministic_seed: 42
+        check_frequency: 50
+        seq_len: 224
+        compare_log: ./outputs/llama_deterministic_ref.json

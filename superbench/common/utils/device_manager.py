@@ -120,6 +120,7 @@ class DeviceManager:
 
 class NvidiaDeviceManager(DeviceManager):
     """Device management module for Nvidia."""
+
     def __init__(self):
         """Constructor."""
         nvml.nvmlInit()
@@ -131,7 +132,12 @@ class NvidiaDeviceManager(DeviceManager):
 
     def __del__(self):
         """Destructor."""
-        nvml.nvmlShutdown()
+        try:
+            if nvml is not None and hasattr(nvml, 'nvmlShutdown'):
+                nvml.nvmlShutdown()
+        except Exception:
+            # Ignore errors during cleanup, especially during interpreter shutdown
+            pass
 
     def get_device_count(self):
         """Get the number of device.
@@ -324,6 +330,7 @@ class NvidiaDeviceManager(DeviceManager):
 
 class AmdDeviceManager(DeviceManager):
     """Device management module for AMD."""
+
     def __init__(self):
         """Constructor."""
         rocml.amdsmi_init()

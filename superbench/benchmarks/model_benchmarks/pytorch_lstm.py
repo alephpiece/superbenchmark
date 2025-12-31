@@ -10,6 +10,7 @@ from superbench.benchmarks import BenchmarkRegistry, Precision
 from superbench.benchmarks.model_benchmarks.model_base import Optimizer
 from superbench.benchmarks.model_benchmarks.pytorch_base import PytorchBase
 from superbench.benchmarks.model_benchmarks.random_dataset import TorchRandomDataset
+from superbench.benchmarks.micro_benchmarks.huggingface_model_loader import HuggingFaceModelLoader
 
 
 class LSTMBenchmarkModel(torch.nn.Module):
@@ -103,6 +104,75 @@ class PytorchLSTM(PytorchBase):
 
         Args:
             precision (Precision): precision of model and input data, such as float32, float16.
+        """
+        # Check if we should use HuggingFace model loading
+        model_config = self._create_model_source_config()
+        if model_config and model_config.is_huggingface():
+            return self._create_huggingface_model(model_config, precision)
+        
+        # Default in-house model creation
+        return self._create_inhouse_model(precision)
+    
+    def _create_huggingface_model(self, model_config, precision):
+        """Create model from HuggingFace Hub.
+        
+        Args:
+            model_config (ModelSourceConfig): Model source configuration.
+            precision (Precision): precision of model and input data.
+            
+        Returns:
+            bool: True if model created successfully, False otherwise.
+        """
+        try:
+            logger.info(f'Loading HuggingFace model: {model_config.identifier}')
+            
+            # Initialize HuggingFace loader
+            loader = HuggingFaceModelLoader(
+                token=model_config.hf_token
+            )
+            
+            # Load model from HuggingFace
+            hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
+            
+            # For LSTM-like models from HF, we wrap them with a classification head
+            # Note: Most HF models are transformers, not pure LSTMs
+            # This assumes the model has a compatible output structure
+            self._model = LSTMBenchmarkModel.__new__(LSTMBenchmarkModel)
+            self._model._lstm = hf_model
+            
+            # Infer hidden size from model config
+            hidden_size = getattr(hf_config, 'hidden_size', self._args.hidden_size)
+            self._model._linear = torch.nn.Linear(hidden_size, self._args.num_classes)
+            
+            # Handle precision and device placement
+            dtype = getattr(torch, precision.value)
+            self._model = self._model.to(dtype=dtype)
+                
+            if self._gpu_available:
+                self._model = self._model.cuda()
+                
+            logger.info(f'Successfully loaded HuggingFace model with {sum(p.numel() for p in self._model.parameters())/1e6:.2f}M parameters')
+            
+        except Exception as e:
+            logger.error(f'Failed to load HuggingFace model: {str(e)}')
+            return False
+            
+        # Create target labels
+        self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
+        if self._gpu_available:
+            self._target = self._target.cuda()
+            
+        self._assign_model_run_metadata(precision)
+        return True
+    
+    def _create_inhouse_model(self, precision):
+        """Create in-house model (original implementation).
+        
+        Args:
+            precision (Precision): precision of model and input data.
+            
+        Returns:
+            bool: True if model created successfully, False otherwise.
         """
         try:
             self._model = LSTMBenchmarkModel(

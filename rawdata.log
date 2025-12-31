@@ -1,0 +1,15 @@
+metric:metadata
+rawdata:{'model_name': 'pytorch-lstm', 'precision': 'float16', 'seed': 42, 'deterministic_seed': 42, 'batch_size': 1, 'seq_len': 64, 'num_steps': 200, 'check_frequency': 20, 'num_classes': 100, 'hidden_size': 1024, 'num_hidden_layers': None, 'num_attention_heads': None, 'intermediate_size': None, 'input_size': 256, 'num_layers': 8, 'bidirectional': False}
+
+metric:metadata
+rawdata:{'model_name': 'pytorch-lstm', 'precision': 'float16', 'seed': 42, 'deterministic_seed': 42, 'batch_size': 1, 'seq_len': 64, 'num_steps': 200, 'check_frequency': 20, 'num_classes': 100, 'hidden_size': 1024, 'num_hidden_layers': None, 'num_attention_heads': None, 'intermediate_size': None, 'input_size': 256, 'num_layers': 8, 'bidirectional': False}
+
+metric:metadata
+rawdata:[{'model_name': 'pytorch-lstm', 'precision': 'float16', 'seed': 42, 'deterministic_seed': 42, 'batch_size': 1, 'seq_len': 64, 'num_steps': 200, 'check_frequency': 20, 'num_classes': 100, 'hidden_size': 1024, 'num_hidden_layers': None, 'num_attention_heads': None, 'intermediate_size': None, 'input_size': 256, 'num_layers': 8, 'bidirectional': False}]
+
+metric:metadata
+rawdata:[{'model_name': 'pytorch-lstm', 'precision': 'float16', 'seed': 42, 'deterministic_seed': 42, 'batch_size': 1, 'seq_len': 64, 'num_steps': 200, 'check_frequency': 20, 'num_classes': 100, 'hidden_size': 1024, 'num_hidden_layers': None, 'num_attention_heads': None, 'intermediate_size': None, 'input_size': 256, 'num_layers': 8, 'bidirectional': False}]
+
+metric:metadata
+rawdata:[{'model_name': 'pytorch-lstm', 'precision': 'float16', 'seed': 42, 'deterministic_seed': 42, 'batch_size': 1, 'seq_len': 64, 'num_steps': 200, 'check_frequency': 20, 'num_classes': 100, 'hidden_size': 1024, 'num_hidden_layers': None, 'num_attention_heads': None, 'intermediate_size': None, 'input_size': 256, 'num_layers': 8, 'bidirectional': False}]
+
