@@ -197,7 +197,6 @@ class ORTInferenceBenchmark(MicroBenchmark):
                 source='huggingface',
                 identifier=self._args.model_identifier,
                 hf_token=self._args.hf_token,
-                trust_remote_code=False,
                 torch_dtype=self._args.precision.value if self._args.precision != Precision.INT8 else 'float32',
             )
             

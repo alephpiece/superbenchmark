@@ -27,7 +27,6 @@ class ModelSourceConfig:
         identifier: Model name (in-house) or model ID (HuggingFace).
         hf_token: Optional HuggingFace authentication token for private/gated models.
         torch_dtype: Data type for model weights ('float32', 'float16', 'bfloat16').
-        trust_remote_code: Whether to trust remote code execution (HF models).
         revision: Specific model version/commit/tag to use.
         cache_dir: Directory to cache downloaded models.
         device_map: Device mapping strategy for model loading.
@@ -39,7 +38,6 @@ class ModelSourceConfig:
     identifier: str = ''
     hf_token: Optional[str] = None
     torch_dtype: str = 'float32'
-    trust_remote_code: bool = False
     revision: Optional[str] = None
     cache_dir: Optional[str] = None
     device_map: str = 'auto'
@@ -89,15 +87,6 @@ class ModelSourceConfig:
                     f"format 'organization/model-name' (e.g., 'meta-llama/Llama-2-7b-hf')"
                 )
 
-            # Warn about trust_remote_code
-            if self.trust_remote_code:
-                import warnings
-                warnings.warn(
-                    "trust_remote_code=True allows execution of remote code. "
-                    "Only use with trusted models.",
-                    UserWarning
-                )
-
         return (True, '')
 
     def to_dict(self) -> Dict[str, Any]:
@@ -111,7 +100,6 @@ class ModelSourceConfig:
             'identifier': self.identifier,
             'hf_token': '***' if self.hf_token else None,  # Don't expose token
             'torch_dtype': self.torch_dtype,
-            'trust_remote_code': self.trust_remote_code,
             'revision': self.revision,
             'cache_dir': self.cache_dir,
             'device_map': self.device_map,
@@ -131,7 +119,7 @@ class ModelSourceConfig:
         # Extract known fields
         known_fields = {
             'source', 'identifier', 'hf_token', 'torch_dtype',
-            'trust_remote_code', 'revision', 'cache_dir', 'device_map',
+            'revision', 'cache_dir', 'device_map',
             'use_auth_token'
         }
         
@@ -170,7 +158,6 @@ class ModelSourceConfig:
             return {}
 
         kwargs = {
-            'trust_remote_code': self.trust_remote_code,
             'revision': self.revision,
             'cache_dir': self.cache_dir,
         }

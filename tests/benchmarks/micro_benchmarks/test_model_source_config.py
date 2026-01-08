@@ -16,7 +16,6 @@ class TestModelSourceConfig:
         assert config.source == 'in-house'
         assert config.identifier == 'bert-base'
         assert config.torch_dtype == 'float32'
-        assert config.trust_remote_code is False
         assert config.hf_token is None
 
     def test_huggingface_config(self):
@@ -113,12 +112,10 @@ class TestModelSourceConfig:
             source='huggingface',
             identifier='test/model',
             hf_token='token123',
-            trust_remote_code=True,
             revision='main'
         )
         kwargs = config.get_hf_kwargs()
         assert kwargs['token'] == 'token123'
-        assert kwargs['trust_remote_code'] is True
         assert kwargs['revision'] == 'main'
 
     def test_deprecated_use_auth_token(self):
@@ -128,13 +125,3 @@ class TestModelSourceConfig:
             use_auth_token='old_token'
         )
         assert config.hf_token == 'old_token'
-
-    def test_trust_remote_code_warning(self):
-        """Test warning for trust_remote_code."""
-        with pytest.warns(UserWarning, match='trust_remote_code'):
-            config = ModelSourceConfig(
-                source='huggingface',
-                identifier='test/model',
-                trust_remote_code=True
-            )
-            config.validate()

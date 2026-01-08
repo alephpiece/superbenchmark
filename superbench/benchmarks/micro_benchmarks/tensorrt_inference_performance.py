@@ -167,7 +167,6 @@ class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
                 source='huggingface',
                 identifier=self._args.model_identifier,
                 hf_token=self._args.hf_token,
-                trust_remote_code=False,
                 torch_dtype='float32',  # TensorRT will handle precision
             )
             

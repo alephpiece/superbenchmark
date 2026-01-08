@@ -66,7 +66,6 @@ class PytorchBase(ModelBenchmark):
             identifier=self._args.model_identifier or self._name,
             hf_token=self._args.hf_token if hasattr(self._args, 'hf_token') else None,
             torch_dtype=torch_dtype,
-            trust_remote_code=getattr(self._args, 'trust_remote_code', False),
             device_map='auto' if not self._gpu_available else None,
         )
         
@@ -95,12 +94,6 @@ class PytorchBase(ModelBenchmark):
             type=str,
             default=None,
             help='HuggingFace authentication token for private/gated models. Can also use HF_TOKEN env variable.',
-        )
-        self._parser.add_argument(
-            '--trust_remote_code',
-            action='store_true',
-            default=False,
-            help='Whether to trust remote code execution for HuggingFace models (use with caution).',
         )
 
     def _set_force_fp32(self):

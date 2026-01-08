@@ -87,7 +87,6 @@ class HuggingFaceModelLoader:
         model_identifier: str,
         torch_dtype: Optional[str] = None,
         device: str = 'cuda',
-        trust_remote_code: bool = False,
         revision: Optional[str] = None,
         device_map: Optional[str] = None,
         **kwargs
@@ -98,7 +97,6 @@ class HuggingFaceModelLoader:
             model_identifier: HF model ID (e.g., 'meta-llama/Llama-2-7b-hf').
             torch_dtype: Data type for model weights ('float32', 'float16', 'bfloat16').
             device: Device to load model on ('cuda', 'cpu').
-            trust_remote_code: Whether to trust remote code execution.
             revision: Specific model version/commit/tag to use.
             device_map: Device mapping strategy for large models.
             **kwargs: Additional arguments passed to from_pretrained().
@@ -119,7 +117,6 @@ class HuggingFaceModelLoader:
             # Prepare loading kwargs
             load_kwargs = {
                 'cache_dir': self.cache_dir,
-                'trust_remote_code': trust_remote_code,
                 'revision': revision,
                 **kwargs
             }
@@ -220,7 +217,6 @@ class HuggingFaceModelLoader:
             model_identifier=config.identifier,
             torch_dtype=config.torch_dtype,
             device='cuda' if torch.cuda.is_available() else 'cpu',
-            trust_remote_code=config.trust_remote_code,
             revision=config.revision,
             device_map=config.device_map,
             **config.additional_kwargs
