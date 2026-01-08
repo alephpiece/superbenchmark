@@ -14,6 +14,8 @@ import numpy as np
 from superbench.common.utils import logger
 from superbench.benchmarks import BenchmarkRegistry, Platform, Precision
 from superbench.benchmarks.micro_benchmarks import MicroBenchmark
+from superbench.benchmarks.micro_benchmarks.model_source_config import ModelSourceConfig
+from superbench.benchmarks.micro_benchmarks.huggingface_model_loader import HuggingFaceModelLoader
 
 
 class ORTInferenceBenchmark(MicroBenchmark):
@@ -96,6 +98,40 @@ class ORTInferenceBenchmark(MicroBenchmark):
             help='The number of test step for benchmarking.',
         )
 
+        # HuggingFace model arguments
+        self._parser.add_argument(
+            '--model_source',
+            type=str,
+            choices=['inhouse', 'huggingface'],
+            default='inhouse',
+            required=False,
+            help='Source of the model: inhouse (default) or huggingface.',
+        )
+
+        self._parser.add_argument(
+            '--model_identifier',
+            type=str,
+            default=None,
+            required=False,
+            help='Model identifier for HuggingFace models (e.g., bert-base-uncased).',
+        )
+
+        self._parser.add_argument(
+            '--hf_token',
+            type=str,
+            default=None,
+            required=False,
+            help='HuggingFace authentication token for private/gated models.',
+        )
+
+        self._parser.add_argument(
+            '--seq_length',
+            type=int,
+            default=512,
+            required=False,
+            help='Sequence length for transformer models.',
+        )
+
     def _preprocess(self):
         """Preprocess/preparation operations before the benchmarking.
 
@@ -113,6 +149,11 @@ class ORTInferenceBenchmark(MicroBenchmark):
             3: ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
 
+        # Handle HuggingFace models if specified
+        if self._args.model_source == 'huggingface':
+            return self._preprocess_huggingface_models()
+
+        # Original in-house model processing
         for model in self._args.pytorch_models:
             if hasattr(torchvision.models, model):
                 data_type = Precision.FLOAT16.value if self._args.precision == Precision.FLOAT16 \
@@ -135,6 +176,71 @@ class ORTInferenceBenchmark(MicroBenchmark):
                 return False
 
         return True
+
+    def _preprocess_huggingface_models(self):
+        """Preprocess HuggingFace models for ONNX Runtime inference.
+        
+        Returns:
+            bool: True if preprocessing succeeds.
+        """
+        import torch
+        
+        if not self._args.model_identifier:
+            logger.error('--model_identifier is required when using --model_source huggingface')
+            return False
+        
+        try:
+            logger.info(f'Loading HuggingFace model: {self._args.model_identifier}')
+            
+            # Create model source config
+            model_config = ModelSourceConfig(
+                source='huggingface',
+                identifier=self._args.model_identifier,
+                hf_token=self._args.hf_token,
+                trust_remote_code=False,
+                torch_dtype=self._args.precision.value if self._args.precision != Precision.INT8 else 'float32',
+            )
+            
+            # Load model from HuggingFace
+            loader = HuggingFaceModelLoader(token=self._args.hf_token)
+            hf_model,  hf_config, tokenizer = loader.load_model_from_config(model_config)
+            
+            # Export to ONNX
+            from superbench.benchmarks.micro_benchmarks._export_torch_to_onnx import torch2onnxExporter
+            exporter = torch2onnxExporter()
+            
+            model_name = self._args.model_identifier.replace('/', '_')
+            
+            # Prepare output path
+            self.__model_cache_path.mkdir(parents=True, exist_ok=True)
+            
+            # Include precision in model name to match expected filename format
+            model_name_with_precision = f'{model_name}.{self._args.precision.value}'
+            
+            # Export directly to final destination to avoid path issues with external data
+            onnx_path = exporter.export_huggingface_model(
+                model=hf_model,
+                model_name=model_name_with_precision,
+                batch_size=self._args.batch_size,
+                seq_length=self._args.seq_length,
+                output_dir=str(self.__model_cache_path),
+            )
+            
+            if not onnx_path:
+                logger.error(f'Failed to export {self._args.model_identifier} to ONNX')
+                return False
+            
+            # Update model list for benchmarking
+            self._args.pytorch_models = [model_name]
+            
+            logger.info(f'Successfully prepared HuggingFace model for ORT inference')
+            return True
+            
+        except Exception as e:
+            logger.error(f'Failed to prepare HuggingFace model: {str(e)}')
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
 
     def _benchmark(self):
         """Implementation for benchmarking."""
@@ -177,15 +283,36 @@ class ORTInferenceBenchmark(MicroBenchmark):
             elapse_times (List[float]): latency of every iterations.
         """
         precision = np.float16 if self._args.precision == Precision.FLOAT16 else np.float32
-        input_tensor = np.random.randn(self._args.batch_size, 3, 224, 224).astype(dtype=precision)
+        
+        # Get input names from the ONNX session to determine input format
+        input_names = [input.name for input in ort_sess.get_inputs()]
+        
+        # Determine input format based on what the model expects
+        if 'pixel_values' in input_names:
+            # Vision model: use pixel_values (batch_size, 3, 224, 224)
+            pixel_values = np.random.randn(self._args.batch_size, 3, 224, 224).astype(dtype=precision)
+            inputs = {'pixel_values': pixel_values}
+        elif 'input_ids' in input_names:
+            # NLP model: use input_ids and attention_mask
+            seq_len = getattr(self._args, 'seq_length', 512)
+            input_ids = np.random.randint(0, 30000, (self._args.batch_size, seq_len)).astype(np.int64)
+            attention_mask = np.ones((self._args.batch_size, seq_len), dtype=np.int64)
+            inputs = {
+                'input_ids': input_ids,
+                'attention_mask': attention_mask
+            }
+        else:
+            # Default for in-house torchvision models: use 'input' (batch_size, 3, 224, 224)
+            input_tensor = np.random.randn(self._args.batch_size, 3, 224, 224).astype(dtype=precision)
+            inputs = {'input': input_tensor}
 
         for i in range(self._args.num_warmup):
-            ort_sess.run(None, {'input': input_tensor})
+            ort_sess.run(None, inputs)
 
         elapse_times = list()
         for i in range(self._args.num_steps):
             start = time.time()
-            ort_sess.run(None, {'input': input_tensor})
+            ort_sess.run(None, inputs)
             end = time.time()
             elapse_times.append((end - start) * 1000)
 

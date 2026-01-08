@@ -10,6 +10,8 @@ from superbench.common.utils import logger
 from superbench.benchmarks import BenchmarkRegistry, Platform, ReturnCode
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
 from superbench.benchmarks.micro_benchmarks._export_torch_to_onnx import torch2onnxExporter
+from superbench.benchmarks.micro_benchmarks.model_source_config import ModelSourceConfig
+from superbench.benchmarks.micro_benchmarks.huggingface_model_loader import HuggingFaceModelLoader
 
 
 class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
@@ -71,6 +73,32 @@ class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
             help='Run at least N inference iterations.',
         )
 
+        # HuggingFace model arguments
+        self._parser.add_argument(
+            '--model_source',
+            type=str,
+            choices=['inhouse', 'huggingface'],
+            default='inhouse',
+            required=False,
+            help='Source of the model: inhouse (default) or huggingface.',
+        )
+
+        self._parser.add_argument(
+            '--model_identifier',
+            type=str,
+            default=None,
+            required=False,
+            help='Model identifier for HuggingFace models (e.g., bert-base-uncased).',
+        )
+
+        self._parser.add_argument(
+            '--hf_token',
+            type=str,
+            default=None,
+            required=False,
+            help='HuggingFace authentication token for private/gated models.',
+        )
+
     def _preprocess(self):
         """Preprocess/preparation operations before the benchmarking.
 
@@ -82,6 +110,11 @@ class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
 
         self.__bin_path = str(Path(self._args.bin_dir) / self._bin_name)
 
+        # Handle HuggingFace models if specified
+        if self._args.model_source == 'huggingface':
+            return self._preprocess_huggingface_models()
+        
+        # Original in-house model processing
         exporter = torch2onnxExporter()
         for model in self._args.pytorch_models:
             if not (exporter.check_torchvision_model(model) or exporter.check_benchmark_model(model)):
@@ -102,9 +135,8 @@ class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
                 # model options
                 f'--onnx={onnx_model}',
                 # build options
-                '--explicitBatch',
                 f'--optShapes=input:{input_shape}',
-                '--workspace=8192',
+                f'--memPoolSize=workspace:8192M',
                 None if self._args.precision == 'fp32' else f'--{self._args.precision}',
                 # inference options
                 f'--iterations={self._args.iterations}',
@@ -114,6 +146,87 @@ class TensorRTInferenceBenchmark(MicroBenchmarkWithInvoke):
             self._commands.append(' '.join(filter(None, args)))
 
         return True
+
+    def _preprocess_huggingface_models(self):
+        """Preprocess HuggingFace models for TensorRT inference.
+        
+        Returns:
+            bool: True if preprocessing succeeds.
+        """
+        import torch
+        
+        if not self._args.model_identifier:
+            logger.error('--model_identifier is required when using --model_source huggingface')
+            return False
+        
+        try:
+            logger.info(f'Loading HuggingFace model: {self._args.model_identifier}')
+            
+            # Create model source config
+            model_config = ModelSourceConfig(
+                source='huggingface',
+                identifier=self._args.model_identifier,
+                hf_token=self._args.hf_token,
+                trust_remote_code=False,
+                torch_dtype='float32',  # TensorRT will handle precision
+            )
+            
+            # Load model from HuggingFace
+            loader = HuggingFaceModelLoader(token=self._args.hf_token)
+            hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
+            
+            # Export to ONNX
+            from superbench.benchmarks.micro_benchmarks._export_torch_to_onnx import torch2onnxExporter
+            exporter = torch2onnxExporter()
+            
+            onnx_path = exporter.export_huggingface_model(
+                model=hf_model,
+                model_name=self._args.model_identifier.replace('/', '_'),
+                batch_size=self._args.batch_size,
+                seq_length=getattr(self._args, 'seq_length', 512),
+            )
+            
+            if not onnx_path:
+                logger.error(f'Failed to export {self._args.model_identifier} to ONNX')
+                return False
+            
+            # Determine input shape based on model type by checking ONNX file
+            import onnx as onnx_lib
+            onnx_model = onnx_lib.load(onnx_path)
+            
+            # Get the first input to determine shape and name
+            input_name = onnx_model.graph.input[0].name
+            
+            # Vision models typically have 4D input (batch, channels, height, width)
+            # NLP models typically have 2D input (batch, sequence)
+            if input_name == 'pixel_values' or len(onnx_model.graph.input[0].type.tensor_type.shape.dim) == 4:
+                # Vision model: batch x channels x height x width
+                input_shape = f'{self._args.batch_size}x3x224x224'
+            else:
+                # NLP model: batch x sequence
+                input_shape = f'{self._args.batch_size}x{getattr(self._args, "seq_length", 512)}'
+            
+            # Build TensorRT command with correct input name
+            args = [
+                self.__bin_path,
+                f'--onnx={onnx_path}',
+                f'--optShapes={input_name}:{input_shape}',
+                f'--memPoolSize=workspace:8192M',
+                None if self._args.precision == 'fp32' else f'--{self._args.precision}',
+                f'--iterations={self._args.iterations}',
+                '--percentile=99',
+            ]
+            self._commands.append(' '.join(filter(None, args)))
+            
+            # Store model name for result processing
+            self._args.pytorch_models = [self._args.model_identifier.replace('/', '_')]
+            
+            logger.info(f'Successfully prepared HuggingFace model for TensorRT inference')
+            return True
+            
+        except Exception as e:
+            logger.error(f'Failed to prepare HuggingFace model: {str(e)}')
+            return False
 
     def _process_raw_result(self, cmd_idx, raw_output):
         """Function to parse raw results and save the summarized results.
