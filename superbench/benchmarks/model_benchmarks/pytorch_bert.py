@@ -142,11 +142,20 @@ class PytorchBERT(PytorchBase):
             # Store the config for reference
             self._config = hf_config
             
-            # Wrap HF model for classification if needed
-            # For BERT, the HF model already has pooler output
-            self._model = BertBenchmarkModel.__new__(BertBenchmarkModel)
-            self._model._bert = hf_model
-            self._model._linear = torch.nn.Linear(hf_config.hidden_size, self._args.num_classes)
+            # Create a properly initialized wrapper model
+            class HFBERTWrapper(torch.nn.Module):
+                def __init__(self, bert_model, hidden_size, num_classes):
+                    super().__init__()
+                    self._bert = bert_model
+                    self._linear = torch.nn.Linear(hidden_size, num_classes)
+                
+                def forward(self, input):
+                    outputs = self._bert(input)
+                    result = self._linear(outputs[1])  # Use pooler output
+                    return result
+            
+            # Initialize the wrapper with HF model
+            self._model = HFBERTWrapper(hf_model, hf_config.hidden_size, self._args.num_classes)
             
             # Handle precision and device placement
             enable_fp8 = precision.name.startswith('FP8_')
@@ -182,7 +191,7 @@ class PytorchBERT(PytorchBase):
         if self._gpu_available:
             self._target = self._target.cuda()
             
-        self._assign_model_run_metadata(precision)
+        return True
         return True
     
     def _create_inhouse_model(self, precision):

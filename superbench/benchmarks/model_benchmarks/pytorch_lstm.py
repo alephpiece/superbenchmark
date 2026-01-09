@@ -134,15 +134,30 @@ class PytorchLSTM(PytorchBase):
             # Load model from HuggingFace
             hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
             
+            # Create a properly initialized wrapper model
             # For LSTM-like models from HF, we wrap them with a classification head
-            # Note: Most HF models are transformers, not pure LSTMs
-            # This assumes the model has a compatible output structure
-            self._model = LSTMBenchmarkModel.__new__(LSTMBenchmarkModel)
-            self._model._lstm = hf_model
+            class HFLSTMWrapper(torch.nn.Module):
+                def __init__(self, lstm_model, hidden_size, num_classes):
+                    super().__init__()
+                    self._lstm = lstm_model
+                    self._linear = torch.nn.Linear(hidden_size, num_classes)
+                
+                def forward(self, input):
+                    # Assuming the HF model returns (output, hidden_state)
+                    outputs = self._lstm(input)
+                    # Use the last output for classification
+                    if isinstance(outputs, tuple):
+                        output = outputs[0]
+                    else:
+                        output = outputs
+                    result = self._linear(output[:, -1, :])  # Use last timestep
+                    return result
             
             # Infer hidden size from model config
             hidden_size = getattr(hf_config, 'hidden_size', self._args.hidden_size)
-            self._model._linear = torch.nn.Linear(hidden_size, self._args.num_classes)
+            
+            # Initialize the wrapper with HF model
+            self._model = HFLSTMWrapper(hf_model, hidden_size, self._args.num_classes)
             
             # Handle precision and device placement
             dtype = getattr(torch, precision.value)
@@ -162,7 +177,6 @@ class PytorchLSTM(PytorchBase):
         if self._gpu_available:
             self._target = self._target.cuda()
             
-        self._assign_model_run_metadata(precision)
         return True
     
     def _create_inhouse_model(self, precision):

@@ -19,7 +19,7 @@ from superbench.benchmarks.model_benchmarks.random_dataset import TorchRandomDat
 from superbench.benchmarks.micro_benchmarks.huggingface_model_loader import HuggingFaceModelLoader
 
 
-class GPT2BenchmarkModel(torch.nn.Module):
+class   GPT2BenchmarkModel(torch.nn.Module):
     """The GPT2 model for benchmarking."""
     def __init__(self, config, num_classes):
         """Constructor.
@@ -139,11 +139,21 @@ class PytorchGPT2(PytorchBase):
             # Store the config for reference
             self._config = hf_config
             
-            # Wrap HF model for classification if needed
-            # For GPT2, we use the last token's hidden state
-            self._model = GPT2BenchmarkModel.__new__(GPT2BenchmarkModel)
-            self._model._gpt2 = hf_model
-            self._model._linear = torch.nn.Linear(hf_config.hidden_size, self._args.num_classes)
+            # Create a properly initialized wrapper model
+            # We can't use __new__ without __init__, so we create a simple wrapper
+            class HFGPTWrapper(torch.nn.Module):
+                def __init__(self, gpt_model, hidden_size, num_classes):
+                    super().__init__()
+                    self._gpt2 = gpt_model
+                    self._linear = torch.nn.Linear(hidden_size, num_classes)
+                
+                def forward(self, input):
+                    outputs = self._gpt2(input)
+                    result = self._linear(outputs[0])
+                    return result
+            
+            # Initialize the wrapper with HF model
+            self._model = HFGPTWrapper(hf_model, hf_config.hidden_size, self._args.num_classes)
             
             # Handle precision and device placement
             enable_fp8 = precision.name.startswith('FP8_')
@@ -179,7 +189,6 @@ class PytorchGPT2(PytorchBase):
         if self._gpu_available:
             self._target = self._target.cuda()
             
-        self._assign_model_run_metadata(precision)
         return True
     
     def _create_inhouse_model(self, precision):

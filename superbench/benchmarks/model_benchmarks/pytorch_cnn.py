@@ -11,6 +11,7 @@ from superbench.benchmarks import BenchmarkRegistry, Precision
 from superbench.benchmarks.model_benchmarks.model_base import Optimizer
 from superbench.benchmarks.model_benchmarks.pytorch_base import PytorchBase
 from superbench.benchmarks.model_benchmarks.random_dataset import TorchRandomDataset
+from superbench.benchmarks.micro_benchmarks.huggingface_model_loader import HuggingFaceModelLoader
 
 
 def _keep_BatchNorm_as_float(module):
@@ -60,11 +61,85 @@ class PytorchCNN(PytorchBase):
 
         return True
 
-    def _create_model(self, precision):
-        """Construct the model for benchmarking.
+    def _create_huggingface_model(self, model_config, precision):
+        """Create HuggingFace ResNet model for benchmarking.
 
         Args:
-            precision (Precision): precision of model and input data, such as float32, float16.
+            model_config (ModelSourceConfig): Model configuration including identifier and parameters.
+            precision (Precision): precision of model and input data.
+
+        Returns:
+            bool: True if model is created successfully.
+        """
+        try:
+            # Load HuggingFace model using the loader (ResNet doesn't need task parameter)
+            loader = HuggingFaceModelLoader()
+            hf_model, hf_config, tokenizer = loader.load_model(
+                model_identifier=model_config.identifier
+            )
+
+            # Get the feature dimension from the model config
+            # Try different config attributes (num_features for timm models, hidden_sizes for transformers)
+            if hasattr(hf_config, 'num_features'):
+                feature_dim = hf_config.num_features
+            elif hasattr(hf_config, 'hidden_sizes') and hf_config.hidden_sizes:
+                feature_dim = hf_config.hidden_sizes[-1]
+            else:
+                # Fallback: inspect the actual model to get pooler output dimension
+                # Create a dummy input and check the pooler_output shape
+                dummy_input = torch.randn(1, 3, 224, 224).to(next(hf_model.parameters()).device)
+                with torch.no_grad():
+                    dummy_output = hf_model(dummy_input)
+                    feature_dim = dummy_output.pooler_output.shape[1]
+                    logger.info(f'Detected feature dimension from model output: {feature_dim}')
+            
+            # Create wrapper class to properly own the model
+            class HFResNetWrapper(torch.nn.Module):
+                """Wrapper for HuggingFace ResNet/DenseNet model."""
+                def __init__(self, hf_model, num_classes, feature_dim):
+                    super().__init__()
+                    self.model = hf_model  # Store as nn.Module attribute so parameters are tracked
+                    # Add classification head - use dynamic feature dimension
+                    self.classifier = torch.nn.Linear(feature_dim, num_classes)
+                    
+                def forward(self, pixel_values):
+                    outputs = self.model(pixel_values)
+                    # pooler_output shape: [batch_size, feature_dim, 1, 1] - flatten it
+                    pooled = outputs.pooler_output.flatten(1)
+                    return self.classifier(pooled)
+
+            # Create the wrapper model with dynamic feature dimension
+            self._model = HFResNetWrapper(hf_model, self._args.num_classes, feature_dim)
+            self._model = self._model.to(dtype=getattr(torch, precision.value))
+            
+            if self._gpu_available:
+                self._model = self._model.cuda()
+
+            logger.info(
+                f'Created HuggingFace CNN model - identifier: {model_config.identifier}, '
+                f'feature_dim: {feature_dim}, '
+                f'precision: {precision.value}, '
+                f'parameters: {sum(p.numel() for p in self._model.parameters() if p.requires_grad)/1e6:.2f}M'
+            )
+
+        except Exception as e:
+            logger.error(f'Failed to load HuggingFace model: {str(e)}')
+            return False
+
+        self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
+        if self._gpu_available:
+            self._target = self._target.cuda()
+
+        return True
+
+    def _create_inhouse_model(self, precision):
+        """Create in-house torchvision ResNet model.
+
+        Args:
+            precision (Precision): precision of model and input data.
+
+        Returns:
+            bool: True if model is created successfully.
         """
         try:
             self._model = getattr(models, self._args.model_type)()
@@ -85,6 +160,22 @@ class PytorchCNN(PytorchBase):
             self._target = self._target.cuda()
 
         return True
+
+    def _create_model(self, precision):
+        """Construct the model for benchmarking.
+
+        Args:
+            precision (Precision): precision of model and input data, such as float32, float16.
+
+        Returns:
+            bool: True if model is created successfully.
+        """
+        # Check if using HuggingFace model source
+        model_config = self._create_model_source_config(precision)
+        if model_config and model_config.source == 'huggingface':
+            return self._create_huggingface_model(model_config, precision)
+        else:
+            return self._create_inhouse_model(precision)
 
     def _train_step(self, precision):
         """Define the training process.

@@ -153,11 +153,21 @@ class PytorchLlama(PytorchBase):
             # Store the config for reference
             self._config = hf_config
             
-            # Wrap HF model for classification if needed
-            # For Llama, we use the last token's hidden state
-            self._model = LlamaBenchmarkModel.__new__(LlamaBenchmarkModel)
-            self._model._llama = hf_model
-            self._model._linear = torch.nn.Linear(hf_config.hidden_size, self._args.num_classes)
+            # Create wrapper class to properly own the HF model
+            class HFLlamaWrapper(torch.nn.Module):
+                """Wrapper for HuggingFace Llama model."""
+                def __init__(self, hf_llama_model, num_classes):
+                    super().__init__()
+                    self._llama = hf_llama_model  # Store as nn.Module attribute
+                    self._linear = torch.nn.Linear(hf_llama_model.config.hidden_size, num_classes)
+                
+                def forward(self, input):
+                    outputs = self._llama(input)
+                    result = self._linear(outputs[0])
+                    return result
+            
+            # Create the wrapper model
+            self._model = HFLlamaWrapper(hf_model, self._args.num_classes)
             
             # Handle precision and device placement
             enable_fp8 = precision.name.startswith('FP8_')
@@ -193,7 +203,6 @@ class PytorchLlama(PytorchBase):
         if self._gpu_available:
             self._target = self._target.cuda()
             
-        self._assign_model_run_metadata(precision)
         return True
     
     def _create_inhouse_model(self, precision):
