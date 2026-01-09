@@ -4,10 +4,6 @@
 outputs/
 *.tar.gz
 
-# IDE and editor settings
-.vscode/settings.json
-.mypy.ini
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
