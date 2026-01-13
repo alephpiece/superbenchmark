@@ -129,81 +129,29 @@ class PytorchLlama(PytorchBase):
         # Default in-house model creation
         return self._create_inhouse_model(precision)
     
-    def _create_huggingface_model(self, model_config, precision):
-        """Create model from HuggingFace Hub.
+    def _create_model_wrapper(self, hf_model, hf_config):
+        """Create Llama-specific model wrapper.
         
         Args:
-            model_config (ModelSourceConfig): Model source configuration.
-            precision (Precision): precision of model and input data.
+            hf_model: The loaded HuggingFace Llama model.
+            hf_config: The HuggingFace model configuration.
             
         Returns:
-            bool: True if model created successfully, False otherwise.
+            torch.nn.Module: Wrapped Llama model with classification head.
         """
-        try:
-            logger.info(f'Loading HuggingFace model: {model_config.identifier}')
+        class HFLlamaWrapper(torch.nn.Module):
+            """Wrapper for HuggingFace Llama model."""
+            def __init__(self, hf_llama_model, num_classes):
+                super().__init__()
+                self._llama = hf_llama_model
+                self._linear = torch.nn.Linear(hf_llama_model.config.hidden_size, num_classes)
             
-            # Initialize HuggingFace loader
-            loader = HuggingFaceModelLoader(
-                token=model_config.hf_token
-            )
-            
-            # Load model from HuggingFace
-            hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
-            
-            # Store the config for reference
-            self._config = hf_config
-            
-            # Create wrapper class to properly own the HF model
-            class HFLlamaWrapper(torch.nn.Module):
-                """Wrapper for HuggingFace Llama model."""
-                def __init__(self, hf_llama_model, num_classes):
-                    super().__init__()
-                    self._llama = hf_llama_model  # Store as nn.Module attribute
-                    self._linear = torch.nn.Linear(hf_llama_model.config.hidden_size, num_classes)
-                
-                def forward(self, input):
-                    outputs = self._llama(input)
-                    result = self._linear(outputs[0])
-                    return result
-            
-            # Create the wrapper model
-            self._model = HFLlamaWrapper(hf_model, self._args.num_classes)
-            
-            # Handle precision and device placement
-            enable_fp8 = precision.name.startswith('FP8_')
-            if enable_fp8:
-                if te is None:
-                    logger.error('Cannot use FP8 - transformer_engine not available')
-                    return False
-                if not self._gpu_available:
-                    logger.error('FP8 is only supported on GPU')
-                    return False
-                    
-                self._fp8_recipe = DelayedScaling(
-                    fp8_format=Format[precision.name.strip('FP8_')],
-                    amax_history_len=16,
-                    amax_compute_algo='max',
-                )
-                self._to_te_model(self._model.to(dtype=torch.float16))
-            else:
-                dtype = getattr(torch, precision.value)
-                self._model = self._model.to(dtype=dtype)
-                
-            if self._gpu_available:
-                self._model = self._model.cuda()
-                
-            logger.info(f'Successfully loaded HuggingFace model with {sum(p.numel() for p in self._model.parameters())/1e6:.2f}M parameters')
-            
-        except Exception as e:
-            logger.error(f'Failed to load HuggingFace model: {str(e)}')
-            return False
-            
-        # Create target labels
-        self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
-        if self._gpu_available:
-            self._target = self._target.cuda()
-            
-        return True
+            def forward(self, input):
+                outputs = self._llama(input)
+                result = self._linear(outputs[0])
+                return result
+        
+        return HFLlamaWrapper(hf_model, self._args.num_classes)
     
     def _create_inhouse_model(self, precision):
         """Create in-house model (original implementation).

@@ -71,6 +71,71 @@ class PytorchBase(ModelBenchmark):
         
         return config
 
+    def _create_huggingface_model(self, model_config, precision):
+        """Load model from HuggingFace Hub and prepare for benchmarking.
+        
+        Args:
+            model_config (ModelSourceConfig): Configuration for model loading.
+            precision (Precision): Model precision (float32, float16, etc.).
+            
+        Returns:
+            bool: True if model is created successfully, False otherwise.
+        """
+        try:
+            # Initialize HuggingFace model loader
+            loader = HuggingFaceModelLoader(
+                cache_dir=None,  # Use default HF cache
+                token=model_config.hf_token
+            )
+            
+            logger.info(f'Loading HuggingFace model: {model_config.identifier}')
+            
+            # Load model from HuggingFace Hub
+            hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
+            
+            # Store tokenizer for potential use
+            self._tokenizer = tokenizer
+            
+            # Call model-specific wrapper creation
+            # Each model class (PytorchCNN, PytorchLSTM, etc.) should implement _create_model_wrapper
+            if hasattr(self, '_create_model_wrapper'):
+                self._model = self._create_model_wrapper(hf_model, hf_config)
+                logger.info(
+                    f'Created HuggingFace model - identifier: {model_config.identifier}, '
+                    f'precision: {precision.value}, '
+                    f'parameters: {sum(p.numel() for p in self._model.parameters()) / 1e6:.2f}M'
+                )
+            else:
+                # Default: use model as-is
+                self._model = hf_model
+                logger.warning(
+                    f'No model wrapper defined for {self._name}. Using raw HuggingFace model. '
+                    'Consider implementing _create_model_wrapper() for custom head.'
+                )
+            
+            # Set precision
+            self._model = self._model.to(dtype=getattr(torch, precision.value))
+            
+            # Move to GPU if available
+            if self._gpu_available:
+                self._model = self._model.cuda()
+            
+            # Create target tensor for training
+            if hasattr(self._args, 'num_classes'):
+                self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
+                if self._gpu_available:
+                    self._target = self._target.cuda()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(
+                f'Failed to load HuggingFace model: {str(e)}'
+            )
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
+
     def add_parser_arguments(self):
         """Add PyTorch model benchmark-specific arguments to the argument parser."""
         super().add_parser_arguments()

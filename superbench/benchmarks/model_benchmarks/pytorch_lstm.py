@@ -113,71 +113,35 @@ class PytorchLSTM(PytorchBase):
         # Default in-house model creation
         return self._create_inhouse_model(precision)
     
-    def _create_huggingface_model(self, model_config, precision):
-        """Create model from HuggingFace Hub.
+    def _create_model_wrapper(self, hf_model, hf_config):
+        """Create LSTM-specific model wrapper.
         
         Args:
-            model_config (ModelSourceConfig): Model source configuration.
-            precision (Precision): precision of model and input data.
+            hf_model: The loaded HuggingFace LSTM model.
+            hf_config: The HuggingFace model configuration.
             
         Returns:
-            bool: True if model created successfully, False otherwise.
+            torch.nn.Module: Wrapped LSTM model with classification head.
         """
-        try:
-            logger.info(f'Loading HuggingFace model: {model_config.identifier}')
+        class HFLSTMWrapper(torch.nn.Module):
+            def __init__(self, lstm_model, hidden_size, num_classes):
+                super().__init__()
+                self._lstm = lstm_model
+                self._linear = torch.nn.Linear(hidden_size, num_classes)
             
-            # Initialize HuggingFace loader
-            loader = HuggingFaceModelLoader(
-                token=model_config.hf_token
-            )
-            
-            # Load model from HuggingFace
-            hf_model, hf_config, tokenizer = loader.load_model_from_config(model_config)
-            
-            # Create a properly initialized wrapper model
-            # For LSTM-like models from HF, we wrap them with a classification head
-            class HFLSTMWrapper(torch.nn.Module):
-                def __init__(self, lstm_model, hidden_size, num_classes):
-                    super().__init__()
-                    self._lstm = lstm_model
-                    self._linear = torch.nn.Linear(hidden_size, num_classes)
-                
-                def forward(self, input):
-                    # Assuming the HF model returns (output, hidden_state)
-                    outputs = self._lstm(input)
-                    # Use the last output for classification
-                    if isinstance(outputs, tuple):
-                        output = outputs[0]
-                    else:
-                        output = outputs
-                    result = self._linear(output[:, -1, :])  # Use last timestep
-                    return result
-            
-            # Infer hidden size from model config
-            hidden_size = getattr(hf_config, 'hidden_size', self._args.hidden_size)
-            
-            # Initialize the wrapper with HF model
-            self._model = HFLSTMWrapper(hf_model, hidden_size, self._args.num_classes)
-            
-            # Handle precision and device placement
-            dtype = getattr(torch, precision.value)
-            self._model = self._model.to(dtype=dtype)
-                
-            if self._gpu_available:
-                self._model = self._model.cuda()
-                
-            logger.info(f'Successfully loaded HuggingFace model with {sum(p.numel() for p in self._model.parameters())/1e6:.2f}M parameters')
-            
-        except Exception as e:
-            logger.error(f'Failed to load HuggingFace model: {str(e)}')
-            return False
-            
-        # Create target labels
-        self._target = torch.LongTensor(self._args.batch_size).random_(self._args.num_classes)
-        if self._gpu_available:
-            self._target = self._target.cuda()
-            
-        return True
+            def forward(self, input):
+                outputs = self._lstm(input)
+                # Use the last output for classification
+                if isinstance(outputs, tuple):
+                    output = outputs[0]
+                else:
+                    output = outputs
+                result = self._linear(output[:, -1, :])  # Use last timestep
+                return result
+        
+        # Infer hidden size from model config
+        hidden_size = getattr(hf_config, 'hidden_size', self._args.hidden_size)
+        return HFLSTMWrapper(hf_model, hidden_size, self._args.num_classes)
     
     def _create_inhouse_model(self, precision):
         """Create in-house model (original implementation).
