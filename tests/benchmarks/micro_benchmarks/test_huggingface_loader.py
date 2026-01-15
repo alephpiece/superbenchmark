@@ -95,7 +95,7 @@ class TestHuggingFaceModelLoader:
         mock_tokenizer.from_pretrained.return_value = mock_tok
 
         model, config, tokenizer = loader.load_model('test/model', device='cpu')
-        
+
         assert model == mock_mdl
         assert config == mock_cfg
         assert tokenizer == mock_tok
@@ -105,14 +105,14 @@ class TestHuggingFaceModelLoader:
     def test_load_model_not_found(self, mock_config, mock_model, loader):
         """Test loading non-existent model."""
         mock_config.from_pretrained.side_effect = OSError('404 Client Error')
-        
+
         with pytest.raises(ModelNotFoundError, match='not found'):
             loader.load_model('nonexistent/model')
 
     def test_load_model_from_config_invalid_source(self, loader):
         """Test loading with invalid source in config."""
         config = ModelSourceConfig(source='in-house', identifier='bert-base')
-        
+
         with pytest.raises(ValueError, match='Cannot load model'):
             loader.load_model_from_config(config)
 
@@ -123,7 +123,7 @@ class TestHuggingFaceModelLoader:
             torch.randn(1000, 1000),  # 1M params
             torch.randn(500, 500),     # 0.25M params
         ]
-        
+
         size = loader._get_model_size(mock_model)
         assert abs(size - 1.25) < 0.01  # Should be ~1.25M
 

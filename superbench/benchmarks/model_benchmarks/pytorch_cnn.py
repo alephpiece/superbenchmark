@@ -61,6 +61,22 @@ class PytorchCNN(PytorchBase):
 
         return True
 
+    def _create_model(self, precision):
+        """Construct the model for benchmarking.
+
+        Args:
+            precision (Precision): precision of model and input data, such as float32, float16.
+
+        Returns:
+            bool: True if model is created successfully.
+        """
+        # Check if using HuggingFace model source
+        model_config = self._create_model_source_config(precision)
+        if model_config and model_config.source == 'huggingface':
+            return self._create_huggingface_model(model_config, precision)
+        else:
+            return self._create_inhouse_model(precision)
+
     def _create_model_wrapper(self, hf_model, hf_config):
         """Create CNN-specific model wrapper (ResNet/DenseNet).
         
@@ -126,22 +142,6 @@ class PytorchCNN(PytorchBase):
             self._target = self._target.cuda()
 
         return True
-
-    def _create_model(self, precision):
-        """Construct the model for benchmarking.
-
-        Args:
-            precision (Precision): precision of model and input data, such as float32, float16.
-
-        Returns:
-            bool: True if model is created successfully.
-        """
-        # Check if using HuggingFace model source
-        model_config = self._create_model_source_config(precision)
-        if model_config and model_config.source == 'huggingface':
-            return self._create_huggingface_model(model_config, precision)
-        else:
-            return self._create_inhouse_model(precision)
 
     def _train_step(self, precision):
         """Define the training process.
