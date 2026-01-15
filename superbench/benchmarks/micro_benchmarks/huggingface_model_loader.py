@@ -222,94 +222,6 @@ class HuggingFaceModelLoader:
             **config.additional_kwargs
         )
 
-    def validate_model_compatibility(
-        self,
-        model: PreTrainedModel,
-        config: PretrainedConfig
-    ) -> Tuple[bool, str]:
-        """Check if model can be exported to ONNX.
-
-        Args:
-            model: The model to validate.
-            config: The model configuration.
-
-        Returns:
-            Tuple of (is_compatible, reason).
-        """
-        architecture = config.model_type.lower()
-
-        # Check if architecture is supported
-        if architecture in self.SUPPORTED_ARCHITECTURES:
-            return (True, f"Architecture '{architecture}' is well-supported for ONNX export")
-
-        if architecture in self.EXPERIMENTAL_ARCHITECTURES:
-            return (
-                True,
-                f"Architecture '{architecture}' is experimental. ONNX export may require adjustments."
-            )
-
-        # Check for known incompatible features
-        issues = []
-
-        # Check for dynamic operations that may cause issues
-        if hasattr(config, 'use_cache') and config.use_cache:
-            issues.append("Model uses KV cache which may complicate ONNX export")
-
-        # Check for very large models
-        param_count = self._get_model_size(model)
-        if param_count > 70_000:  # > 70B parameters
-            issues.append(f"Very large model ({param_count/1000:.1f}B params) may cause memory issues")
-
-        if issues:
-            return (False, "; ".join(issues))
-
-        return (True, "No obvious compatibility issues detected")
-
-    def get_model_info(self, model_identifier: str) -> Dict[str, Any]:
-        """Retrieve model metadata without downloading full model.
-
-        Args:
-            model_identifier: HF model ID.
-
-        Returns:
-            Dictionary with model information (architecture, size, etc.).
-
-        Raises:
-            ModelNotFoundError: If model doesn't exist.
-        """
-        try:
-            # Load just the config to get metadata
-            load_kwargs = {'cache_dir': self.cache_dir}
-            if self.token:
-                load_kwargs['token'] = self.token
-
-            config = AutoConfig.from_pretrained(model_identifier, **load_kwargs)
-
-            # Extract useful information
-            info = {
-                'model_id': model_identifier,
-                'architecture': config.model_type,
-                'hidden_size': getattr(config, 'hidden_size', None),
-                'num_layers': getattr(config, 'num_hidden_layers', None),
-                'num_attention_heads': getattr(config, 'num_attention_heads', None),
-                'vocab_size': getattr(config, 'vocab_size', None),
-                'max_position_embeddings': getattr(config, 'max_position_embeddings', None),
-            }
-
-            # Check compatibility
-            is_compatible, reason = self._check_architecture_compatibility(config.model_type.lower())
-            info['onnx_compatible'] = is_compatible
-            info['compatibility_notes'] = reason
-
-            return info
-
-        except OSError as e:
-            if 'not found' in str(e).lower() or '404' in str(e):
-                raise ModelNotFoundError(
-                    f"Model '{model_identifier}' not found on Hugging Face Hub"
-                ) from e
-            raise
-
     def list_supported_architectures(self) -> Dict[str, List[str]]:
         """Return list of model architectures and their support status.
 
@@ -388,22 +300,6 @@ class HuggingFaceModelLoader:
             Number of parameters in millions.
         """
         return sum(p.numel() for p in model.parameters()) / 1_000_000
-
-    def clear_cache(self, model_identifier: Optional[str] = None):
-        """Clear cached models.
-
-        Args:
-            model_identifier: Specific model to clear. If None, warns but doesn't delete.
-        """
-        if model_identifier:
-            logger.warning(
-                f"Selective cache clearing for '{model_identifier}' not implemented. "
-                "Please manually delete from {self.cache_dir}"
-            )
-        else:
-            logger.warning(
-                f"To clear all cached models, manually delete: {self.cache_dir}"
-            )
 
     def __repr__(self) -> str:
         """String representation of the loader."""

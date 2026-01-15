@@ -73,34 +73,6 @@ class TestHuggingFaceModelLoader:
         assert is_compatible is False
         assert 'not in the tested list' in reason
 
-    @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoConfig')
-    def test_get_model_info_success(self, mock_config, loader):
-        """Test getting model info."""
-        # Mock config
-        mock_cfg = MagicMock()
-        mock_cfg.model_type = 'bert'
-        mock_cfg.hidden_size = 768
-        mock_cfg.num_hidden_layers = 12
-        mock_cfg.num_attention_heads = 12
-        mock_cfg.vocab_size = 30522
-        mock_cfg.max_position_embeddings = 512
-        mock_config.from_pretrained.return_value = mock_cfg
-
-        info = loader.get_model_info('test/model')
-        
-        assert info['model_id'] == 'test/model'
-        assert info['architecture'] == 'bert'
-        assert info['hidden_size'] == 768
-        assert info['num_layers'] == 12
-
-    @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoConfig')
-    def test_get_model_info_not_found(self, mock_config, loader):
-        """Test getting info for non-existent model."""
-        mock_config.from_pretrained.side_effect = OSError('404 not found')
-        
-        with pytest.raises(ModelNotFoundError, match='not found'):
-            loader.get_model_info('nonexistent/model')
-
     @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoModel')
     @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoConfig')
     @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoTokenizer')
@@ -143,22 +115,6 @@ class TestHuggingFaceModelLoader:
         
         with pytest.raises(ValueError, match='Cannot load model'):
             loader.load_model_from_config(config)
-
-    @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoModel')
-    @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoConfig')
-    @patch('superbench.benchmarks.micro_benchmarks.huggingface_model_loader.AutoTokenizer')
-    def test_validate_model_compatibility_supported(self, mock_tokenizer, mock_config, mock_model, loader):
-        """Test validating a supported model."""
-        mock_cfg = MagicMock()
-        mock_cfg.model_type = 'bert'
-        mock_cfg.use_cache = False
-        
-        mock_mdl = MagicMock()
-        mock_mdl.parameters.return_value = [torch.randn(100, 100)]
-        
-        is_compatible, reason = loader.validate_model_compatibility(mock_mdl, mock_cfg)
-        assert is_compatible is True
-        assert 'well-supported' in reason
 
     def test_get_model_size(self, loader):
         """Test model size calculation."""
