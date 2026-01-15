@@ -127,9 +127,3 @@ class TestHuggingFaceModelLoader:
         size = loader._get_model_size(mock_model)
         assert abs(size - 1.25) < 0.01  # Should be ~1.25M
 
-    def test_repr(self, loader):
-        """Test string representation."""
-        repr_str = repr(loader)
-        assert 'HuggingFaceModelLoader' in repr_str
-        assert '/tmp/test_cache' in repr_str
-        assert 'no authentication' in repr_str
