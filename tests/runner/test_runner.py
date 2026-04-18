@@ -233,7 +233,7 @@ class RunnerTestCase(unittest.TestCase):
                     },
                 },
                 'expected_command': (
-                    "mpirun -tag-output -allow-run-as-root -host localhost:4 -bind-to numa "
+                    'mpirun -tag-output -allow-run-as-root -host localhost:4 -bind-to numa '
                     '-x "NCCL_BUFFSIZE=4194304" -x "NCCL_RINGS=0 1 2 3|0 3 2 1" -x PATH '
                     f'sb exec --output-dir {self.sb_output_dir} -c sb.config.yaml -C superbench.enable=foo'
                 ),
