@@ -1,7 +1,12 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-CPPSOURCES := $(shell find $(CURDIR) -regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)')
+CPPSOURCES := $(shell find $(CURDIR) \
+	-path $(CURDIR)/.git -prune -o \
+	-path $(CURDIR)/.venv -prune -o \
+	-path $(CURDIR)/build -prune -o \
+	-path $(CURDIR)/third_party -prune -o \
+	-regextype posix-extended -regex '.*\.(c|cpp|h|hpp|cc|cxx|cu)' -print)
 
 .PHONY: cpplint cppformat cppbuild thirdparty postinstall
 
