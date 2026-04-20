@@ -13,7 +13,6 @@ from superbench.benchmarks import BenchmarkRegistry, BenchmarkType, ReturnCode, 
 
 class DtkMemBwTest(BenchmarkTestCase, unittest.TestCase):
     """Test class for DTK mem-bw benchmark."""
-
     @classmethod
     def setUpClass(cls):
         """Hook method for setting up class fixture before running tests in the class."""

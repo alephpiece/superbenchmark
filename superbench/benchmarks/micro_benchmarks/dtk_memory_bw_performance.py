@@ -13,7 +13,6 @@ from superbench.benchmarks.micro_benchmarks import MemBwBenchmark
 
 class DtkMemBwBenchmark(MemBwBenchmark):
     """The DTK memory performance benchmark class."""
-
     def __init__(self, name, parameters=''):
         """Constructor.
 
@@ -65,9 +64,7 @@ class DtkMemBwBenchmark(MemBwBenchmark):
         number = r'[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?'
         row_pattern = re.compile(
             r'^\s*\d+(?:\.\d+)?\s*(?:B|KB|MB|GB)\s+'
-            r'({number})\s+({number})\s+({number})\s+({number})\s+({number})\s+({number})\s*$'.format(
-                number=number
-            ),
+            r'({number})\s+({number})\s+({number})\s+({number})\s+({number})\s+({number})\s*$'.format(number=number),
             re.IGNORECASE,
         )
 
