@@ -434,7 +434,7 @@ Command prefix to use in the mode, in Python formatted string.
 Available variables in formatted string include:
 + `proc_rank`
 + `proc_num`
-+ `gpu_numa_node`: NUMA node of the GPU associated with `proc_rank`, available in `local` mode and evaluated on the target node when supported by the platform topology utility.
++ `gpu_numa_node`: NUMA node of the GPU associated with `proc_rank`, available in `local` mode and evaluated on the target node through `sb node topo`.
 
 So `prefix: CUDA_VISIBLE_DEVICES={proc_rank}` will be expressed as `CUDA_VISIBLE_DEVICES=0`, `CUDA_VISIBLE_DEVICES=1`, etc.
 

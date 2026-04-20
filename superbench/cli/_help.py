@@ -109,6 +109,14 @@ helps['node info'] = """
           text: {cli_name} node info
 """.format(cli_name=CLI_NAME)
 
+helps['node topo'] = """
+    type: command
+    short-summary: Get node topology information.
+    examples:
+        - name: get GPU NUMA node for local process rank
+          text: {cli_name} node topo --get gpu-numa-node --proc-rank 0
+""".format(cli_name=CLI_NAME)
+
 helps['result'] = """
     type: group
     short-summary: Process or analyze the results of SuperBench benchmarks.
