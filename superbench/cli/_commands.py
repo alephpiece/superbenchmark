@@ -84,7 +84,7 @@ class SuperBenchCommandsLoader(CLICommandsLoader):
 
         with ArgumentsContext(self, 'node topo') as ac:
             ac.argument('get', options_list=('--get', ), type=str, help='Topology field to get.')
-            ac.argument('proc_rank', options_list=('--proc-rank', ), type=int, help='Local process rank.')
+            ac.argument('gpu_id', options_list=('--gpu-id', ), type=int, help='GPU id.')
 
         with ArgumentsContext(self, 'result') as ac:
             ac.argument('raw_data_file', options_list=('--data-file', '-d'), type=str, help='Path to raw data file.')

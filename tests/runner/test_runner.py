@@ -597,14 +597,10 @@ class RunnerTestCase(unittest.TestCase):
 
         self.assertIn('docker exec sb-custom bash -lc', captured['cmd'])
 
-    @mock.patch('superbench.runner.runner.get_gpu_numa_node_command')
     @mock.patch('superbench.runner.ansible.AnsibleClient.run')
-    def test_run_proc_injects_gpu_numa_node_command_for_local_prefix(
-        self, mock_ansible_client_run, mock_get_gpu_numa_node_command
-    ):
-        """Test _run_proc injects gpu_numa_node command for local mode prefix."""
+    def test_run_proc_injects_local_numactl_physcpubind(self, mock_ansible_client_run):
+        """Test _run_proc injects local numactl command."""
         mock_ansible_client_run.return_value = 0
-        mock_get_gpu_numa_node_command.return_value = '1'
         self.runner._sb_benchmarks = {'foo': {}}
         captured = {}
 
@@ -618,14 +614,22 @@ class RunnerTestCase(unittest.TestCase):
                 'name': 'local',
                 'proc_num': 2,
                 'env': {},
-                'prefix': 'HIP_VISIBLE_DEVICES={proc_rank} numactl -N {gpu_numa_node}',
+                'prefix': 'HIP_VISIBLE_DEVICES={proc_rank}',
+                'numactl': {
+                    'cpunodebind': 'gpu_affinity',
+                    'membind': 'gpu_affinity',
+                    'physcpubind': '$(({proc_rank}*16))-$(({proc_rank}*16+15))',
+                },
             }
         )
 
         self.runner._run_proc('foo', mode, {'proc_rank': 1})
 
-        self.assertIn('PROC_RANK=1 HIP_VISIBLE_DEVICES=1 numactl -N 1 sb exec', captured['cmd'])
-        mock_get_gpu_numa_node_command.assert_called_once_with(1)
+        self.assertIn(
+            'SB_GPU_NUMA_AFFINITY=$(sb node topo --get gpu-numa-affinity --gpu-id 1) && '
+            'PROC_RANK=1 HIP_VISIBLE_DEVICES=1 numactl -N ${SB_GPU_NUMA_AFFINITY} '
+            '-m ${SB_GPU_NUMA_AFFINITY} -C $((1*16))-$((1*16+15)) sb exec', captured['cmd']
+        )
 
     @mock.patch('superbench.runner.ansible.AnsibleClient.run')
     def test_run_proc_no_docker_keeps_tmp_env_source(self, mock_ansible_client_run):

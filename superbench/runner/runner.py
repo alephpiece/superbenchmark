@@ -18,10 +18,10 @@ from joblib import Parallel, delayed
 from omegaconf import ListConfig, OmegaConf
 
 from superbench.common.utils import SuperBenchLogger, logger, gen_ibstat, gen_traffic_pattern_host_groups
-from superbench.common.utils.gpu_topology import get_gpu_numa_node_command
 from superbench.common.utils.lazy_import import LazyImport
 from superbench.benchmarks import ReduceType, Reducer
 from superbench.monitor import MonitorRecord
+from superbench.runner.numactl import get_local_numactl_command
 
 AnsibleClient = LazyImport('superbench.runner.ansible', 'AnsibleClient')
 
@@ -159,18 +159,19 @@ class SuperBenchRunner():
             ) if enable_nsys and mode.proc_rank == 0 else ''
             # Build the command parts, only including trace if it's not empty
             command_parts = []
-            prefix = mode.prefix.format(
-                proc_rank=mode.proc_rank,
-                proc_num=mode.proc_num,
-                gpu_numa_node=get_gpu_numa_node_command(mode.proc_rank)
-            )
+            setup_command, numactl_command = get_local_numactl_command(mode)
+            prefix = mode.prefix.format(proc_rank=mode.proc_rank, proc_num=mode.proc_num)
             if prefix:
                 command_parts.append(prefix)
+            if numactl_command:
+                command_parts.append(numactl_command)
             if trace_command:
                 command_parts.append(trace_command)
             command_parts.append(exec_command)
             mode_command = ' '.join(command_parts)
             mode_command = f'PROC_RANK={mode.proc_rank} {mode_command}'
+            if setup_command:
+                mode_command = f'{setup_command} && {mode_command}'
         elif mode.name == 'torch.distributed':
             # TODO: replace with torch.distributed.run in v1.9
             # TODO: only supports node_num=1 and node_num=all currently

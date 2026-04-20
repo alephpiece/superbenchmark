@@ -10,7 +10,10 @@ superbench:
       modes:
         - name: local
           proc_num: 8
-          prefix: HIP_VISIBLE_DEVICES={proc_rank} numactl -m {gpu_numa_node} -N {gpu_numa_node}
+          prefix: HIP_VISIBLE_DEVICES={proc_rank}
+          numactl:
+            cpunodebind: gpu_affinity
+            membind: gpu_affinity
           parallel: yes
     default_pytorch_mode: &default_pytorch_mode
       enable: false
