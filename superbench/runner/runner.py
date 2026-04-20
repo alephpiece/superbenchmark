@@ -18,7 +18,7 @@ from joblib import Parallel, delayed
 from omegaconf import ListConfig, OmegaConf
 
 from superbench.common.utils import SuperBenchLogger, logger, gen_ibstat, gen_traffic_pattern_host_groups
-from superbench.common.utils.gpu_topology import get_gpu_numa_node
+from superbench.common.utils.gpu_topology import get_gpu_numa_node_command
 from superbench.common.utils.lazy_import import LazyImport
 from superbench.benchmarks import ReduceType, Reducer
 from superbench.monitor import MonitorRecord
@@ -160,7 +160,9 @@ class SuperBenchRunner():
             # Build the command parts, only including trace if it's not empty
             command_parts = []
             prefix = mode.prefix.format(
-                proc_rank=mode.proc_rank, proc_num=mode.proc_num, gpu_numa_node=getattr(mode, 'gpu_numa_node', None)
+                proc_rank=mode.proc_rank,
+                proc_num=mode.proc_num,
+                gpu_numa_node=get_gpu_numa_node_command(mode.proc_rank)
             )
             if prefix:
                 command_parts.append(prefix)
@@ -545,8 +547,6 @@ class SuperBenchRunner():
             int: Process return code.
         """
         mode.update(vars)
-        if mode.name == 'local' and '{gpu_numa_node}' in mode.prefix:
-            mode.gpu_numa_node = get_gpu_numa_node(mode.proc_rank)
         if mode.name == 'mpi' and 'pattern' in mode:
             mode.env.update({'SB_MODE_SERIAL_INDEX': mode.serial_index, 'SB_MODE_PARALLEL_INDEX': mode.parallel_index})
         logger.info('Runner is going to run %s in %s mode, proc rank %d.', benchmark_name, mode.name, mode.proc_rank)

@@ -597,12 +597,14 @@ class RunnerTestCase(unittest.TestCase):
 
         self.assertIn('docker exec sb-custom bash -lc', captured['cmd'])
 
-    @mock.patch('superbench.runner.runner.get_gpu_numa_node')
+    @mock.patch('superbench.runner.runner.get_gpu_numa_node_command')
     @mock.patch('superbench.runner.ansible.AnsibleClient.run')
-    def test_run_proc_resolves_gpu_numa_node_for_local_prefix(self, mock_ansible_client_run, mock_get_gpu_numa_node):
-        """Test _run_proc formats gpu_numa_node for local mode prefix."""
+    def test_run_proc_injects_gpu_numa_node_command_for_local_prefix(
+        self, mock_ansible_client_run, mock_get_gpu_numa_node_command
+    ):
+        """Test _run_proc injects gpu_numa_node command for local mode prefix."""
         mock_ansible_client_run.return_value = 0
-        mock_get_gpu_numa_node.return_value = '1'
+        mock_get_gpu_numa_node_command.return_value = '1'
         self.runner._sb_benchmarks = {'foo': {}}
         captured = {}
 
@@ -623,7 +625,7 @@ class RunnerTestCase(unittest.TestCase):
         self.runner._run_proc('foo', mode, {'proc_rank': 1})
 
         self.assertIn('PROC_RANK=1 HIP_VISIBLE_DEVICES=1 numactl -N 1 sb exec', captured['cmd'])
-        mock_get_gpu_numa_node.assert_called_once_with(1)
+        mock_get_gpu_numa_node_command.assert_called_once_with(1)
 
     @mock.patch('superbench.runner.ansible.AnsibleClient.run')
     def test_run_proc_no_docker_keeps_tmp_env_source(self, mock_ansible_client_run):
