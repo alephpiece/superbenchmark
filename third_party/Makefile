@@ -8,7 +8,6 @@ HIP_HOME ?= /opt/rocm/hip
 RCCL_HOME ?= /opt/rocm/rccl
 HPCX_HOME ?= /opt/hpcx
 ROCM_PATH ?= /opt/rocm
-ROCHPL_ARCHS ?= gfx936,gfx938
 
 CUDA_VER ?= $(shell nvcc --version | grep 'release' | awk '{print $$6}' | cut -c2- | cut -d '.' -f1-2)
 ROCBLAS_BRANCH ?= rocm-$(shell dpkg -l | grep 'rocm-dev ' | awk '{print $$3}' | cut -d '.' -f1-3)
@@ -208,7 +207,7 @@ rocm_hpl: sb_micro_path
 ifneq (,$(wildcard rocHPL/install.sh))
 	cd ./rocHPL && \
 	git apply ../rochpl_dtk26.patch && \
-	./install.sh --with-rocm=$(ROCM_PATH) --with-rocblas=$(ROCM_PATH)/rocblas --with-mpi=$(MPI_HOME) --arch=$(ROCHPL_ARCHS)
+	./install.sh --with-rocm=$(ROCM_PATH) --with-rocblas=$(ROCM_PATH)/rocblas --with-mpi=$(MPI_HOME) --arch=gfx936,gfx938
 	cp -v ./rocHPL/build/bin/rochpl $(SB_MICRO_PATH)/bin/
 	chmod +x $(SB_MICRO_PATH)/bin/rochpl
 endif

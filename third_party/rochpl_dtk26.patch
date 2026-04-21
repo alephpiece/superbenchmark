@@ -71,8 +71,21 @@ index 6b80b24..30d3c9d 100644
  
  # Configure a header file to pass the rocHPL version
  configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/hpl_version.hpp.in"
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 6d6be5d..ed4813a 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -101,7 +101,7 @@ if(NOT ROCM_FOUND)
+   execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}.zip
+                   WORKING_DIRECTORY ${PROJECT_EXTERN_DIR})
+ 
+-  find_package(ROCmCMakeBuildTools REQUIRED CONFIG PATHS ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag})
++  set(CMAKE_MODULE_PATH "${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}/share/rocm/cmake;${CMAKE_MODULE_PATH}")
+ endif()
+ 
+ include(ROCMSetupVersion)
 diff --git a/install.sh b/install.sh
-index b30a3fb..104432b 100755
+index b30a3fb..75900d8 100755
 --- a/install.sh
 +++ b/install.sh
 @@ -2,7 +2,7 @@
@@ -119,158 +132,7 @@ index b30a3fb..104432b 100755
          printf "sudo dnf install -y ${library_dependencies_fedora[*]}\n"
          ;;
  
-@@ -102,45 +103,61 @@ check_exit_code( )
- }
- 
- 
--# Clone and build OpenMPI+UCX in rochpl/tpl
-+# Download and build OpenMPI+UCX in rochpl/tpl
- install_openmpi( )
- {
-+  local install_dir=${PWD}/tpl
-+  local ucx_prefix=${install_dir}/ucx
-+  local ompi_prefix=${install_dir}/openmpi
-+
-   #OpenMPI and UCX install to one of these locations depending on OS
--  ucx_lib_folder=./tpl/ucx/lib
--  ompi_lib_folder=./tpl/openmpi/lib
--  ucx_lib64_folder=./tpl/ucx/lib64
--  ompi_lib64_folder=./tpl/openmpi/lib64
--
--  if [ ! -d "./tpl/ucx" ]; then
--    mkdir -p tpl && cd tpl
--    git clone --branch v1.18.0 https://github.com/openucx/ucx.git ucx
--    check_exit_code 2
--    cd ucx;
--    ./autogen.sh; ./autogen.sh #why do we have to run this twice?
--    check_exit_code 2
--    mkdir build; cd build
--    ../contrib/configure-opt --prefix=${PWD}/../ --with-rocm=${with_rocm} --without-knem --without-cuda --without-java
--    check_exit_code 2
--    make -j$(nproc)
--    check_exit_code 2
--    make install
--    check_exit_code 2
--    cd ../../..
--  elif ([ ! -f "${ucx_lib_folder}/libucm.so" ] || [ ! -f "${ucx_lib_folder}/libucp.so" ]  || \
--        [ ! -f "${ucx_lib_folder}/libucs.so" ] || [ ! -f "${ucx_lib_folder}/libuct.so" ]) && \
--       ([ ! -f "${ucx_lib64_folder}/libucm.so" ] || [ ! -f "${ucx_lib64_folder}/libucp.so" ]  || \
--        [ ! -f "${ucx_lib64_folder}/libucs.so" ] || [ ! -f "${ucx_lib64_folder}/libuct.so" ]); then
--    cd tpl/ucx;
--    ./autogen.sh; ./autogen.sh
--    check_exit_code 2
--    mkdir build; cd build
--    ../contrib/configure-opt --prefix=${PWD}/../ --with-rocm=${with_rocm} --without-knem --without-cuda --without-java
-+  local ucx_lib_folder=${ucx_prefix}/lib
-+  local ompi_lib_folder=${ompi_prefix}/lib
-+  local ucx_lib64_folder=${ucx_prefix}/lib64
-+  local ompi_lib64_folder=${ompi_prefix}/lib64
-+
-+  local ucx_version=1.20.0
-+  local ucx_src=${install_dir}/ucx-${ucx_version}
-+  local ucx_tarball=ucx-${ucx_version}.tar.gz
-+  local ompi_version=5.0.9
-+  local ompi_src=${install_dir}/openmpi-${ompi_version}
-+  local ompi_tarball=openmpi-${ompi_version}.tar.gz
-+
-+  mkdir -p ${install_dir} && cd ${install_dir}
-+
-+  rm -rf ${ucx_src}
-+  if [ ! -f "${ucx_tarball}" ]; then
-+    wget https://github.com/openucx/ucx/releases/download/v${ucx_version}/${ucx_tarball}
-+  fi
-+  check_exit_code 2
-+  tar -zxf ${ucx_tarball}
-+  check_exit_code 2
-+
-+  rm -rf ${ompi_src}
-+  if [ ! -f "${ompi_tarball}" ]; then
-+    wget https://download.open-mpi.org/release/open-mpi/v${ompi_version%.*}/${ompi_tarball}
-+  fi
-+  check_exit_code 2
-+  tar -zxf ${ompi_tarball}
-+  check_exit_code 2
-+
-+  if ([ ! -f "${ucx_lib_folder}/libucm.so" ] || [ ! -f "${ucx_lib_folder}/libucp.so" ]  || \
-+      [ ! -f "${ucx_lib_folder}/libucs.so" ] || [ ! -f "${ucx_lib_folder}/libuct.so" ]) && \
-+     ([ ! -f "${ucx_lib64_folder}/libucm.so" ] || [ ! -f "${ucx_lib64_folder}/libucp.so" ]  || \
-+      [ ! -f "${ucx_lib64_folder}/libucs.so" ] || [ ! -f "${ucx_lib64_folder}/libuct.so" ]); then
-+    cd ${ucx_src};
-+    ./contrib/configure-release --prefix=${ucx_prefix} \
-+      --enable-optimizations --enable-tuning \
-+      --enable-cma --enable-mt \
-+      --with-mlx5 --with-rc --with-ud --with-dc --with-dm --with-ib_hw_tm \
-+      --with-verbs=/usr/include --with-rdmacm=/usr \
-+      --with-rocm=${with_rocm} \
-+      --without-knem --without-cuda --without-java
-     check_exit_code 2
-     make -j$(nproc)
-     check_exit_code 2
-     make install
-     check_exit_code 2
--    cd ../../..
-   fi
- 
-   # Check for successful build
-@@ -152,31 +169,23 @@ install_openmpi( )
-     exit 3
-   fi
- 
--  if [ ! -d "./tpl/openmpi" ]; then
--    mkdir -p tpl && cd tpl
--    git clone --branch v5.0.7 --recursive https://github.com/open-mpi/ompi.git openmpi
--    check_exit_code 2
--    cd openmpi; ./autogen.pl;
--    check_exit_code 2
--    mkdir build; cd build
--    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs --disable-man-pages --enable-mca-no-build=btl-uct
--    check_exit_code 2
--    make -j$(nproc)
--    check_exit_code 2
--    make install
--    check_exit_code 2
--    cd ../../..
--  elif [ ! -f "${ompi_lib_folder}/libmpi.so" ] && [ ! -f "${ompi_lib64_folder}/libmpi.so" ]; then
--    cd tpl/openmpi; ./autogen.pl;
--    check_exit_code 2
--    mkdir build; cd build
--    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs --disable-man-pages --enable-mca-no-build=btl-uct
-+  export LD_LIBRARY_PATH="${ucx_lib_folder}:${ucx_lib64_folder}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-+  export LIBRARY_PATH="${ucx_lib_folder}:${ucx_lib64_folder}${LIBRARY_PATH:+:${LIBRARY_PATH}}"
-+  export CPATH="${ucx_prefix}/include${CPATH:+:${CPATH}}"
-+
-+  if [ ! -f "${ompi_lib_folder}/libmpi.so" ] && [ ! -f "${ompi_lib64_folder}/libmpi.so" ]; then
-+    cd ${ompi_src}
-+    ./configure --prefix=${ompi_prefix} \
-+      --with-ucx=${ucx_prefix} \
-+      --with-rocm=${with_rocm} \
-+      --enable-builtin-atomics \
-+      --enable-wrapper-rpath \
-+      --enable-mca-no-build=btl-uct
-     check_exit_code 2
-     make -j$(nproc)
-     check_exit_code 2
-     make install
-     check_exit_code 2
--    cd ../../..
-   fi
- 
-   # Check for successful build
-@@ -184,6 +193,13 @@ install_openmpi( )
-     echo "Error: OpenMPI install unsuccessful."
-     exit_with_error 2
-   fi
-+
-+  export LD_LIBRARY_PATH="${ompi_lib_folder}:${ompi_lib64_folder}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-+  export LIBRARY_PATH="${ompi_lib_folder}:${ompi_lib64_folder}${LIBRARY_PATH:+:${LIBRARY_PATH}}"
-+  export CPATH="${ompi_prefix}/include${CPATH:+:${CPATH}}"
-+  export OPAL_PREFIX=${ompi_prefix}
-+
-+  cd ${install_dir}/..
- }
- 
- # #################################################
-@@ -224,6 +240,7 @@ verbose_print=true
+@@ -224,6 +225,7 @@ verbose_print=true
  progress_report=true
  detailed_timing=true
  enable_tracing=false
@@ -278,7 +140,7 @@ index b30a3fb..104432b 100755
  
  # #################################################
  # Parameter parsing
-@@ -232,7 +249,7 @@ enable_tracing=false
+@@ -232,7 +234,7 @@ enable_tracing=false
  # check if we have a modern version of getopt that can handle whitespace and long parameters
  getopt -T
  if [[ $? -eq 4 ]]; then
@@ -287,7 +149,7 @@ index b30a3fb..104432b 100755
  else
    echo "Need a new version of getopt"
    exit_with_error 1
-@@ -263,6 +280,9 @@ while true; do
+@@ -263,6 +265,9 @@ while true; do
      --with-mpi)
          with_mpi=${2}
          shift 2 ;;
@@ -297,7 +159,7 @@ index b30a3fb..104432b 100755
      --with-mpi-gtl)
          with_mpi_gtl=${2}
          shift 2 ;;
-@@ -294,9 +314,6 @@ printf "\033[32mCreating project build directory in: \033[33m${build_dir}\033[0m
+@@ -294,9 +299,6 @@ printf "\033[32mCreating project build directory in: \033[33m${build_dir}\033[0m
  # #################################################
  # prep
  # #################################################
@@ -307,7 +169,7 @@ index b30a3fb..104432b 100755
  # Default cmake executable is called cmake
  cmake_executable=cmake
  
-@@ -347,11 +364,14 @@ pushd .
+@@ -347,11 +349,14 @@ pushd .
    if [[ "${enable_tracing}" == on || "${enable_tracing}" == true || "${enable_tracing}" == 1 || "${enable_tracing}" == enabled ]]; then
      cmake_common_options="${cmake_common_options} -DHPL_TRACING=ON"
    fi
