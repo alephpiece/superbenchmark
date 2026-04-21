@@ -207,7 +207,7 @@ endif
 rocm_hpl: sb_micro_path
 ifneq (,$(wildcard rocHPL/install.sh))
 	cd ./rocHPL && \
-	git apply --3way ../rochpl_dtk26.patch && \
+	git apply ../rochpl_dtk26.patch && \
 	./install.sh --with-rocm=$(ROCM_PATH) --with-rocblas=$(ROCM_PATH)/rocblas --with-mpi=$(MPI_HOME) --arch=$(ROCHPL_ARCHS)
 	cp -v ./rocHPL/build/bin/rochpl $(SB_MICRO_PATH)/bin/
 	chmod +x $(SB_MICRO_PATH)/bin/rochpl
