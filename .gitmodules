@@ -39,3 +39,6 @@
 [submodule "third_party/rocHPCG"]
 	path = third_party/rocHPCG
 	url = https://github.com/ROCm/rocHPCG.git
+[submodule "third_party/rocHPL"]
+	path = third_party/rocHPL
+	url = https://github.com/ROCm/rocHPL.git

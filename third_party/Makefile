@@ -8,6 +8,7 @@ HIP_HOME ?= /opt/rocm/hip
 RCCL_HOME ?= /opt/rocm/rccl
 HPCX_HOME ?= /opt/hpcx
 ROCM_PATH ?= /opt/rocm
+ROCHPL_ARCHS ?= gfx936,gfx938
 
 CUDA_VER ?= $(shell nvcc --version | grep 'release' | awk '{print $$6}' | cut -c2- | cut -d '.' -f1-2)
 ROCBLAS_BRANCH ?= rocm-$(shell dpkg -l | grep 'rocm-dev ' | awk '{print $$3}' | cut -d '.' -f1-3)
@@ -16,7 +17,7 @@ ROCM_VER ?= $(shell hipconfig -R | grep -oP '\d+\.\d+\.\d+' || echo "0.0.0")
 
 NUM_MAKE_JOBS ?= $(shell nproc --ignore=2)
 
-.PHONY: all cuda_with_msccl cuda rocm dtk common cuda_cutlass cuda_bandwidthTest cuda_nccl_tests cuda_perftest cuda_msccl rocm_perftest fio rocm_rccl_tests rocm_rocblas rocm_bandwidthTest gpcnet cuda_gpuburn cpu_stream cpu_hpl directx_amf_encoding_latency directx_amd rocm_hipblaslt rocm_babelstream_hip megatron_lm megatron_deepspeed apex_rocm nvbandwidth rocm_megatron_lm rocm_hpcg
+.PHONY: all cuda_with_msccl cuda rocm dtk common cuda_cutlass cuda_bandwidthTest cuda_nccl_tests cuda_perftest cuda_msccl rocm_perftest fio rocm_rccl_tests rocm_rocblas rocm_bandwidthTest gpcnet cuda_gpuburn cpu_stream cpu_hpl directx_amf_encoding_latency directx_amd rocm_hipblaslt rocm_babelstream_hip megatron_lm megatron_deepspeed apex_rocm nvbandwidth rocm_megatron_lm rocm_hpcg rocm_hpl
 
 # Build targets.
 all: cuda rocm
@@ -24,7 +25,7 @@ all: cuda rocm
 cuda_with_msccl: cuda cuda_msccl
 cuda: common cuda_cutlass cuda_bandwidthTest cuda_nccl_tests cuda_perftest gpcnet cuda_gpuburn megatron_lm megatron_deepspeed nvbandwidth
 rocm: common rocm_perftest rocm_rccl_tests rocm_rocblas rocm_bandwidthTest rocm_hipblaslt megatron_deepspeed apex_rocm rocm_megatron_lm
-dtk: common rocm_perftest rocm_rccl_tests rocm_babelstream_hip megatron_deepspeed apex_rocm rocm_megatron_lm rocm_hpcg
+dtk: common rocm_perftest rocm_rccl_tests rocm_babelstream_hip megatron_deepspeed apex_rocm rocm_megatron_lm rocm_hpcg rocm_hpl
 cpu: common cpu_perftest
 common: fio cpu_stream
 
@@ -200,6 +201,16 @@ ifneq (,$(wildcard rocHPCG/install.sh))
 	cp -v ./rocHPCG/build/release/rochpcg-install/bin/rochpcg $(SB_MICRO_PATH)/bin/
 	cp -v ./run_rochpcg.sh $(SB_MICRO_PATH)/bin/run_rochpcg
 	chmod +x $(SB_MICRO_PATH)/bin/rochpcg $(SB_MICRO_PATH)/bin/run_rochpcg
+endif
+
+# Build rocHPL and stage the binary for SuperBench DTK image.
+rocm_hpl: sb_micro_path
+ifneq (,$(wildcard rocHPL/install.sh))
+	cd ./rocHPL && \
+	git apply --3way ../rochpl_dtk26.patch && \
+	./install.sh --with-rocm=$(ROCM_PATH) --with-rocblas=$(ROCM_PATH)/rocblas --with-mpi=$(MPI_HOME) --arch=$(ROCHPL_ARCHS)
+	cp -v ./rocHPL/build/bin/rochpl $(SB_MICRO_PATH)/bin/
+	chmod +x $(SB_MICRO_PATH)/bin/rochpl
 endif
 
 # Build GPCNET from commit c56fd9.
