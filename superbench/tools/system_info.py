@@ -286,23 +286,26 @@ class SystemInfo():    # pragma: no cover
 
         return gpu_dict
 
-    def _merge_hygon_gpu_json_info(self, gpu_info, command):
-        """Merge Hygon GPU info from json command output.
+    def _get_hygon_gpu_json_info(self, command):
+        """Get Hygon GPU info from json command output.
 
         Args:
-            gpu_info (dict): GPU info keyed by card id.
             command (str): Command to get GPU info in json format.
+
+        Returns:
+            dict: Hygon GPU info keyed by card id.
         """
+        gpu_info = {}
         command_output = self._run_cmd(command)
         command_info = json.loads(command_output)
         for card, card_info in command_info.items():
             if not card.startswith('card'):
                 continue
-            if card not in gpu_info:
-                gpu_info[card] = {}
+            gpu_info[card] = {}
             for key, value in card_info.items():
                 if key:
                     gpu_info[card][key] = value
+        return gpu_info
 
     def get_gpu_hygon(self):
         """Get hygon gpu info."""
@@ -336,12 +339,11 @@ class SystemInfo():    # pragma: no cover
             '--showuse',
             '--showbw',
         ]
-        for option in hygon_json_info_options:
-            command = 'hy-smi --json {}'.format(option)
-            try:
-                self._merge_hygon_gpu_json_info(gpu_dict['rocm_info'], command)
-            except Exception:
-                logger.exception('Error: get hygon gpu info failed with command: %s', command)
+        command = 'hy-smi --json {}'.format(' '.join(hygon_json_info_options))
+        try:
+            gpu_dict['rocm_info'] = self._get_hygon_gpu_json_info(command)
+        except Exception:
+            logger.exception('Error: get hygon gpu info failed with command: %s', command)
 
         try:
             gpu_dict['topo'] = self._run_cmd('hy-smi --showtopo')
