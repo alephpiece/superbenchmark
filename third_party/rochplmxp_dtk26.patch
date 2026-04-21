@@ -1,0 +1,191 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 91afcc4..6331291 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -88,7 +88,7 @@ foreach(i ${rochplmxp_device_source})
+ endforeach()
+ 
+ # HIP flags workaround while target_compile_options does not work
+-list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -fPIE")
++list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -fPIE --gpu-max-threads-per-block=1024")
+ list(APPEND CMAKE_HOST_FLAGS "")
+ 
+ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+@@ -100,21 +100,35 @@ else()
+ endif()
+ 
+ # GPU arch targets
+-set(TARGETS "gfx900;gfx906")
+-if(HIP_VERSION VERSION_GREATER_EQUAL "3.7")
+-  set(TARGETS "${TARGETS};gfx908")
+-endif()
+-if(HIP_VERSION VERSION_GREATER_EQUAL "4.3")
+-  set(TARGETS "${TARGETS};gfx90a")
+-endif()
+-if (HIP_VERSION VERSION_GREATER_EQUAL "5.7")
+-  set(TARGETS "${TARGETS};gfx942")
++set(ARCHS "")
++if(DEFINED HPL_BUILD_ARCH AND NOT HPL_BUILD_ARCH STREQUAL "")
++  string(REPLACE "," ";" ARCHS "${HPL_BUILD_ARCH}")
++  list(TRANSFORM ARCHS STRIP)
++  list(REMOVE_DUPLICATES ARCHS)
++  message(STATUS "Using manually specified GPU targets: ${ARCHS}")
++else()
++  message(STATUS "Detecting available architecture")
++  find_program(ROCMINFO_EXECUTABLE rocminfo)
++  if(ROCMINFO_EXECUTABLE)
++    execute_process(
++      COMMAND ${ROCMINFO_EXECUTABLE}
++      OUTPUT_VARIABLE ROCMINFO_OUTPUT
++      ERROR_QUIET
++      OUTPUT_STRIP_TRAILING_WHITESPACE)
++
++    string(REGEX MATCHALL "Name:[ \t]+gfx[0-9a-z]+" ARCH_MATCHES "${ROCMINFO_OUTPUT}")
++    string(REGEX REPLACE "Name:[ \t]+" "" ARCHS "${ARCH_MATCHES}")
++    list(REMOVE_DUPLICATES ARCHS)
++  endif()
+ endif()
+-if (HIP_VERSION VERSION_GREATER_EQUAL "6.5")
+-  set(TARGETS "${TARGETS};gfx950")
++
++if(ARCHS STREQUAL "")
++  message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use ./install.sh --arch=gfxXXX")
+ endif()
+ 
+-foreach(target ${TARGETS})
++message(STATUS "Building for GPU architecture: ${ARCHS}")
++
++foreach(target ${ARCHS})
+   list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
+ endforeach()
+ 
+@@ -173,7 +187,7 @@ set_target_properties(rochplmxp PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BIN
+ 
+ set_target_properties(rochplmxp PROPERTIES LINKER_LANGUAGE CXX)
+ 
+-set_target_properties(rochplmxp PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
++set_target_properties(rochplmxp PROPERTIES HIP_ARCHITECTURES "${ARCHS}")
+ 
+ # # Configure a header file to pass the rocHPL-MxP version
+ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/hplmxp_version.hpp.in"
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 164d06d..041a8e2 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -109,7 +109,7 @@ if(NOT ROCM_FOUND)
+   execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}.zip
+                   WORKING_DIRECTORY ${PROJECT_EXTERN_DIR})
+ 
+-  find_package(ROCmCMakeBuildTools REQUIRED CONFIG PATHS ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag})
++  set(CMAKE_MODULE_PATH "${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}/share/rocm/cmake;${CMAKE_MODULE_PATH}")
+ endif()
+ 
+ include(ROCMSetupVersion)
+diff --git a/install.sh b/install.sh
+index de72a20..6f2ef05 100755
+--- a/install.sh
++++ b/install.sh
+@@ -18,6 +18,7 @@ function display_help()
+   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
+   echo "    [--with-rocsolver=<dir>] Path to rocSOLVER library (Default: /opt/rocm/rocsolver)"
+   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
++  echo "    [--arch=<archs>] Specify comma separated architecture list to build (Default: detect from rocminfo)"
+   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
+   echo "    [--enable-tracing] Annotate profiler traces with rocTX markers (Default: false)"
+   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
+@@ -33,10 +34,10 @@ supported_distro( )
+   fi
+ 
+   case "${ID}" in
+-    ubuntu|centos|rhel|fedora|sles)
++    ubuntu|centos|rhel|fedora|sles|kylin|rocky)
+         true
+         ;;
+-    *)  printf "This script is currently supported on Ubuntu, CentOS, RHEL, Fedora and SLES\n"
++    *)  printf "This script is currently supported on Ubuntu, CentOS, RHEL, Fedora, SLES, Kylin and Rocky\n"
+         exit 2
+         ;;
+   esac
+@@ -68,11 +69,11 @@ exit_with_error( )
+         printf "sudo apt install -y ${library_dependencies_ubuntu[*]}\n"
+         ;;
+ 
+-      centos|rhel)
++      centos|rhel|kylin)
+         printf "sudo yum -y --nogpgcheck install ${library_dependencies_centos[*]}\n"
+         ;;
+ 
+-      fedora)
++      fedora|rocky)
+         printf "sudo dnf install -y ${library_dependencies_fedora[*]}\n"
+         ;;
+ 
+@@ -217,6 +218,7 @@ verbose_print=true
+ enable_tracing=false
+ progress_report=true
+ detailed_timing=true
++arch=
+ 
+ # #################################################
+ # Parameter parsing
+@@ -225,7 +227,7 @@ detailed_timing=true
+ # check if we have a modern version of getopt that can handle whitespace and long parameters
+ getopt -T
+ if [[ $? -eq 4 ]]; then
+-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,with-rocsolver:,verbose-print:,enable-tracing:,progress-report:,detailed-timing: --options hg -- "$@")
++  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,with-rocsolver:,verbose-print:,enable-tracing:,progress-report:,detailed-timing:,arch: --options hg -- "$@")
+ else
+   echo "Need a new version of getopt"
+   exit_with_error 1
+@@ -262,6 +264,9 @@ while true; do
+     --with-rocsolver)
+         with_rocsolver=${2}
+         shift 2 ;;
++    --arch)
++        arch=${2}
++        shift 2 ;;
+     --verbose-print)
+         verbose_print=${2}
+         shift 2 ;;
+@@ -335,11 +340,14 @@ pushd .
+   if [[ "${enable_tracing}" == on || "${enable_tracing}" == true || "${enable_tracing}" == 1 || "${enable_tracing}" == enabled ]]; then
+     cmake_common_options="${cmake_common_options} -DHPLMXP_TRACING=ON"
+   fi
++  if [[ -n "${arch}" ]]; then
++    cmake_common_options="${cmake_common_options} -DHPL_BUILD_ARCH=${arch}"
++  fi
+   shopt -u nocasematch
+ 
+   # Build library with AMD toolchain because of existence of device kernels
+   mkdir -p ${build_dir} && cd ${build_dir}
+-  ${cmake_executable} ${cmake_common_options} ..
++  ${cmake_executable} --fresh ${cmake_common_options} ..
+   check_exit_code 2
+ 
+   make -j$(nproc) install
+diff --git a/src/hplmxp_ptest.cpp b/src/hplmxp_ptest.cpp
+index 11d0f44..e8b1eee 100644
+--- a/src/hplmxp_ptest.cpp
++++ b/src/hplmxp_ptest.cpp
+@@ -211,7 +211,7 @@ void HPLMXP_ptest(HPLMXP_T_test& test,
+                        ctime(&current_time_end));
+       }
+ #ifdef HPLMXP_PROGRESS_REPORT
+-      printf("Final Score:    %7.4e GFLOPS \n", Gflops);
++      printf("Final Score:    %7.9e GFLOPS \n", Gflops);
+ #endif
+     }
+ #ifdef HPLMXP_DETAILED_TIMING
+diff --git a/src/pgesv/hplmxp_pgetrf.cpp b/src/pgesv/hplmxp_pgetrf.cpp
+index ccbd4c0..0230b44 100644
+--- a/src/pgesv/hplmxp_pgetrf.cpp
++++ b/src/pgesv/hplmxp_pgetrf.cpp
+@@ -420,7 +420,7 @@ void HPLMXP_pgetrf(HPLMXP_T_grid&         grid,
+       printf("  %9.3e  |", step_gflops);
+ #endif
+ 
+-      printf("    %9.3e   \n", gflops);
++      printf("    %9.9e   \n", gflops);
+     }
+ #endif
+ 
