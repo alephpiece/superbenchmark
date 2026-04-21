@@ -102,30 +102,43 @@ class DtkHpcgBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         self.assertEqual(ReturnCode.SUCCESS, benchmark.return_code)
 
         workload = 'p4x4x2_n560x280x280'
-        self.assertEqual(6904.9, benchmark.result[f'final_{workload}_gflops'][0])
-        self.assertEqual(215.8, benchmark.result[f'final_{workload}_gflops_per_process'][0])
-        self.assertEqual(52359.0, benchmark.result[f'final_{workload}_bandwidth'][0])
-        self.assertEqual(1636.2, benchmark.result[f'final_{workload}_bandwidth_per_process'][0])
-        self.assertEqual(5849.4, benchmark.result[f'ddot_{workload}_gflops'][0])
-        self.assertEqual(46794.9, benchmark.result[f'ddot_{workload}_bandwidth'][0])
-        self.assertEqual(182.8, benchmark.result[f'ddot_{workload}_gflops_per_process'][0])
-        self.assertEqual(1462.3, benchmark.result[f'ddot_{workload}_bandwidth_per_process'][0])
-        self.assertEqual(3052.0, benchmark.result[f'waxpby_{workload}_gflops'][0])
-        self.assertEqual(36623.8, benchmark.result[f'waxpby_{workload}_bandwidth'][0])
-        self.assertEqual(5473.9, benchmark.result[f'spmv_{workload}_gflops'][0])
-        self.assertEqual(34468.8, benchmark.result[f'spmv_{workload}_bandwidth'][0])
-        self.assertEqual(7716.9, benchmark.result[f'mg_{workload}_gflops'][0])
-        self.assertEqual(59557.1, benchmark.result[f'mg_{workload}_bandwidth'][0])
-        self.assertEqual(6971.0, benchmark.result[f'total_{workload}_gflops'][0])
-        self.assertEqual(52859.9, benchmark.result[f'total_{workload}_bandwidth'][0])
-        self.assertEqual(217.8, benchmark.result[f'total_{workload}_gflops_per_process'][0])
-        self.assertEqual(1651.9, benchmark.result[f'total_{workload}_bandwidth_per_process'][0])
-        self.assertEqual(0.12, benchmark.result[f'setup_time_{workload}'][0])
-        self.assertEqual(0.25, benchmark.result[f'optimization_time_{workload}'][0])
-        self.assertEqual(7.55, benchmark.result[f'total_time_{workload}'][0])
-        self.assertEqual(27, len(benchmark.result))
-        self.assertNotIn('is_valid', benchmark.result)
-        self.assertNotIn('local_domain_x', benchmark.result)
+        expected_results = {
+            f'final_{workload}_gflops': 6904.9,
+            f'final_{workload}_gflops_per_process': 215.8,
+            f'final_{workload}_bandwidth': 52359.0,
+            f'final_{workload}_bandwidth_per_process': 1636.2,
+            f'ddot_{workload}_gflops': 5849.4,
+            f'ddot_{workload}_bandwidth': 46794.9,
+            f'ddot_{workload}_gflops_per_process': 182.8,
+            f'ddot_{workload}_bandwidth_per_process': 1462.3,
+            f'waxpby_{workload}_gflops': 3052.0,
+            f'waxpby_{workload}_bandwidth': 36623.8,
+            f'waxpby_{workload}_gflops_per_process': 95.4,
+            f'waxpby_{workload}_bandwidth_per_process': 1144.5,
+            f'spmv_{workload}_gflops': 5473.9,
+            f'spmv_{workload}_bandwidth': 34468.8,
+            f'spmv_{workload}_gflops_per_process': 171.1,
+            f'spmv_{workload}_bandwidth_per_process': 1077.1,
+            f'mg_{workload}_gflops': 7716.9,
+            f'mg_{workload}_bandwidth': 59557.1,
+            f'mg_{workload}_gflops_per_process': 241.2,
+            f'mg_{workload}_bandwidth_per_process': 1861.2,
+            f'total_{workload}_gflops': 6971.0,
+            f'total_{workload}_bandwidth': 52859.9,
+            f'total_{workload}_gflops_per_process': 217.8,
+            f'total_{workload}_bandwidth_per_process': 1651.9,
+            f'setup_time_{workload}': 0.12,
+            f'optimization_time_{workload}': 0.25,
+            f'total_time_{workload}': 7.55,
+        }
+
+        self.assertEqual(len(expected_results), len(benchmark.result) - benchmark.default_metric_count)
+        for metric, value in expected_results.items():
+            self.assertIn(metric, benchmark.result)
+            self.assertEqual(value, benchmark.result[metric][0])
+        for metric in benchmark.result:
+            self.assertNotIn('valid', metric)
+            self.assertNotIn('domain', metric)
         self.assertIn('raw_output_0', benchmark.raw_data)
 
     def test_dtk_hpcg_result_parsing_ignores_invalid_markers(self):
