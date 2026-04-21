@@ -27,7 +27,11 @@ class GpuTopologyTest(unittest.TestCase):
                 },
                 'card1': {
                     '(Topology) Numa Node': '1',
-                    '(Topology) Numa Affinity': '1',
+                    '(Topology) Numa Affinity': '1,2',
+                },
+                'card2': {
+                    '(Topology) Numa Node': '2',
+                    '(Topology) Numa Affinity': '2-3',
                 },
             }
         )
@@ -40,7 +44,11 @@ class GpuTopologyTest(unittest.TestCase):
                 },
                 1: {
                     'numa_node': '1',
-                    'numa_affinity': '1',
+                    'numa_affinity': '1,2',
+                },
+                2: {
+                    'numa_node': '2',
+                    'numa_affinity': '2-3',
                 },
             }
         )
@@ -62,6 +70,22 @@ class GpuTopologyTest(unittest.TestCase):
         mock_run_command.return_value.stdout = json.dumps({'card0': {}})
 
         with self.assertRaisesRegex(RuntimeError, 'Failed to parse GPU NUMA topology from hy-smi'):
+            get_gpu_numa_map()
+
+    @mock.patch('superbench.common.utils.gpu_topology.run_command')
+    def test_get_gpu_numa_map_invalid_affinity(self, mock_run_command):
+        """Test get_gpu_numa_map rejects invalid NUMA affinity."""
+        mock_run_command.return_value.returncode = 0
+        mock_run_command.return_value.stdout = json.dumps(
+            {
+                'card0': {
+                    '(Topology) Numa Node': '0',
+                    '(Topology) Numa Affinity': '0,a',
+                },
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, 'invalid NUMA node list'):
             get_gpu_numa_map()
 
     @mock.patch('superbench.common.utils.gpu_topology.get_gpu_numa_map')

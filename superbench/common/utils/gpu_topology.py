@@ -9,6 +9,20 @@ import re
 from superbench.common.utils.process import run_command
 
 
+def _validate_numa_node_list(value):
+    """Validate a numactl NUMA node list."""
+    value = str(value)
+    if not value:
+        raise ValueError('empty NUMA node list')
+    for item in value.split(','):
+        if re.fullmatch(r'\d+', item):
+            continue
+        match = re.fullmatch(r'(\d+)-(\d+)', item)
+        if match and int(match.group(1)) <= int(match.group(2)):
+            continue
+        raise ValueError('invalid NUMA node list: {}'.format(value))
+
+
 def get_gpu_numa_map():
     """Get NUMA topology for all local GPUs.
 
@@ -30,7 +44,7 @@ def get_gpu_numa_map():
             numa_node = card_topology['(Topology) Numa Node']
             numa_affinity = card_topology.get('(Topology) Numa Affinity', numa_node)
             int(numa_node)
-            int(numa_affinity)
+            _validate_numa_node_list(numa_affinity)
             gpu_numa_map[gpu_id] = {
                 'numa_node': numa_node,
                 'numa_affinity': numa_affinity,

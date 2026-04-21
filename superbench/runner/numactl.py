@@ -3,6 +3,8 @@
 
 """Build numactl command fragments for runner modes."""
 
+from omegaconf import ListConfig
+
 GPU_AFFINITY = 'gpu_affinity'
 GPU_NUMA_AFFINITY_ENV = 'SB_GPU_NUMA_AFFINITY'
 
@@ -11,6 +13,8 @@ def _format_template_value(value, mode):
     """Format a mode template value."""
     if isinstance(value, str):
         return value.format(proc_rank=mode.proc_rank, proc_num=mode.proc_num)
+    if isinstance(value, (list, tuple, ListConfig)):
+        return ','.join(_format_template_value(item, mode) for item in value)
     return str(value)
 
 

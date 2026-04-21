@@ -62,6 +62,23 @@ class NumactlTestCase(unittest.TestCase):
             get_local_numactl_command(mode), ('', 'numactl -N $((6/2)) -m $((8/4)) -C $((6*16))-$((6*16+15))')
         )
 
+    def test_get_local_numactl_command_list_values(self):
+        """Test list values are formatted as numactl node and CPU lists."""
+        mode = OmegaConf.create(
+            {
+                'name': 'local',
+                'proc_num': 8,
+                'proc_rank': 6,
+                'numactl': {
+                    'cpunodebind': [0, 1],
+                    'membind': ['{proc_rank}', 7],
+                    'physcpubind': ['0-15', '32-47'],
+                },
+            }
+        )
+
+        self.assertEqual(get_local_numactl_command(mode), ('', 'numactl -N 0,1 -m 6,7 -C 0-15,32-47'))
+
     def test_get_local_numactl_command_disabled_values(self):
         """Test disabled values do not generate numactl options."""
         mode = OmegaConf.create(
