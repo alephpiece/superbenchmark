@@ -72,7 +72,15 @@ class DtkHpcgBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         """Get benchmark."""
         (benchmark_cls, _) = BenchmarkRegistry._BenchmarkRegistry__select_benchmark(self.benchmark_name, Platform.DTK)
         benchmark = benchmark_cls(self.benchmark_name, parameters='')
-        benchmark._args = SimpleNamespace(log_raw_data=False)
+        benchmark._args = SimpleNamespace(
+            log_raw_data=False,
+            npx=4,
+            npy=4,
+            npz=2,
+            nx=560,
+            ny=280,
+            nz=280,
+        )
         benchmark._curr_run_index = 0
         benchmark._result = BenchmarkResult(self.benchmark_name, BenchmarkType.MICRO, ReturnCode.SUCCESS, run_count=1)
         return benchmark
@@ -93,51 +101,59 @@ class DtkHpcgBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         self.assertTrue(benchmark._process_raw_result(0, self.example_raw_output))
         self.assertEqual(ReturnCode.SUCCESS, benchmark.return_code)
 
-        self.assertEqual(6904.9, benchmark.result['final_gflops'][0])
-        self.assertEqual(215.8, benchmark.result['final_gflops_per_process'][0])
-        self.assertEqual(5849.4, benchmark.result['ddot_gflops'][0])
-        self.assertEqual(46794.9, benchmark.result['ddot_bandwidth'][0])
-        self.assertEqual(182.8, benchmark.result['ddot_gflops_per_process'][0])
-        self.assertEqual(1462.3, benchmark.result['ddot_bandwidth_per_process'][0])
-        self.assertEqual(3052.0, benchmark.result['waxpby_gflops'][0])
-        self.assertEqual(36623.8, benchmark.result['waxpby_bandwidth'][0])
-        self.assertEqual(5473.9, benchmark.result['spmv_gflops'][0])
-        self.assertEqual(34468.8, benchmark.result['spmv_bandwidth'][0])
-        self.assertEqual(7716.9, benchmark.result['mg_gflops'][0])
-        self.assertEqual(59557.1, benchmark.result['mg_bandwidth'][0])
-        self.assertEqual(6971.0, benchmark.result['total_gflops'][0])
-        self.assertEqual(52859.9, benchmark.result['total_bandwidth'][0])
-        self.assertEqual(217.8, benchmark.result['total_gflops_per_process'][0])
-        self.assertEqual(1651.9, benchmark.result['total_bandwidth_per_process'][0])
-        self.assertEqual(0.12, benchmark.result['setup_time'][0])
-        self.assertEqual(0.25, benchmark.result['optimization_time'][0])
-        self.assertEqual(7.55, benchmark.result['total_time'][0])
-        self.assertEqual(0, benchmark.result['is_valid'][0])
-        self.assertEqual(560, benchmark.result['local_domain_x'][0])
-        self.assertEqual(280, benchmark.result['local_domain_y'][0])
-        self.assertEqual(280, benchmark.result['local_domain_z'][0])
-        self.assertEqual(2240, benchmark.result['global_domain_x'][0])
-        self.assertEqual(1120, benchmark.result['global_domain_y'][0])
-        self.assertEqual(560, benchmark.result['global_domain_z'][0])
-        self.assertEqual(4, benchmark.result['process_domain_x'][0])
-        self.assertEqual(4, benchmark.result['process_domain_y'][0])
-        self.assertEqual(2, benchmark.result['process_domain_z'][0])
+        workload = 'p4x4x2_n560x280x280'
+        expected_results = {
+            f'final_{workload}_gflops': 6904.9,
+            f'final_{workload}_gflops_per_process': 215.8,
+            f'final_{workload}_bandwidth': 52359.0,
+            f'final_{workload}_bandwidth_per_process': 1636.2,
+            f'ddot_{workload}_gflops': 5849.4,
+            f'ddot_{workload}_bandwidth': 46794.9,
+            f'ddot_{workload}_gflops_per_process': 182.8,
+            f'ddot_{workload}_bandwidth_per_process': 1462.3,
+            f'waxpby_{workload}_gflops': 3052.0,
+            f'waxpby_{workload}_bandwidth': 36623.8,
+            f'waxpby_{workload}_gflops_per_process': 95.4,
+            f'waxpby_{workload}_bandwidth_per_process': 1144.5,
+            f'spmv_{workload}_gflops': 5473.9,
+            f'spmv_{workload}_bandwidth': 34468.8,
+            f'spmv_{workload}_gflops_per_process': 171.1,
+            f'spmv_{workload}_bandwidth_per_process': 1077.1,
+            f'mg_{workload}_gflops': 7716.9,
+            f'mg_{workload}_bandwidth': 59557.1,
+            f'mg_{workload}_gflops_per_process': 241.2,
+            f'mg_{workload}_bandwidth_per_process': 1861.2,
+            f'total_{workload}_gflops': 6971.0,
+            f'total_{workload}_bandwidth': 52859.9,
+            f'total_{workload}_gflops_per_process': 217.8,
+            f'total_{workload}_bandwidth_per_process': 1651.9,
+            f'setup_time_{workload}': 0.12,
+            f'optimization_time_{workload}': 0.25,
+            f'total_time_{workload}': 7.55,
+        }
+
+        self.assertEqual(len(expected_results), len(benchmark.result) - benchmark.default_metric_count)
+        for metric, value in expected_results.items():
+            self.assertIn(metric, benchmark.result)
+            self.assertEqual(value, benchmark.result[metric][0])
+        for metric in benchmark.result:
+            self.assertNotIn('valid', metric)
+            self.assertNotIn('domain', metric)
         self.assertIn('raw_output_0', benchmark.raw_data)
 
-    def test_dtk_hpcg_result_parsing_valid_by_absence_of_invalid_markers(self):
-        """Test DTK gpu-hpcg valid detection by absence of invalid markers."""
+    def test_dtk_hpcg_result_parsing_ignores_invalid_markers(self):
+        """Test DTK gpu-hpcg does not emit validity metrics."""
         benchmark = self.get_benchmark()
-        valid_output = self.example_raw_output.replace('*** WARNING *** INVALID RUN', '')
-        valid_output = valid_output.replace('*** WARNING *** THIS IS NOT A VALID RUN ***', '')
 
-        self.assertTrue(benchmark._process_raw_result(0, valid_output))
-        self.assertEqual(1, benchmark.result['is_valid'][0])
+        self.assertTrue(benchmark._process_raw_result(0, self.example_raw_output))
+        self.assertFalse(any('valid' in metric for metric in benchmark.result))
 
     def test_dtk_hpcg_result_parsing_failure_when_required_summary_is_missing(self):
         """Test DTK gpu-hpcg parsing failure when required summary is missing."""
         benchmark = self.get_benchmark()
         invalid_output = self.example_raw_output.replace(
-            '[1,0]<stdout>: Process domain: 4 x 4 x 2\n\n',
+            '[1,0]<stdout>: Final  =  6904.9 GFlop/s ( 52359.0 GB/s)     '
+            '215.8 GFlop/s per process ( 1636.2 GB/s per process)\n',
             '',
         )
 

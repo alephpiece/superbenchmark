@@ -90,214 +90,40 @@ superbench:
       statistics: mean
       categories: HPCG gpu-hpcg:r1
       metrics:
-        - gpu-hpcg:r1/is_valid
-        - gpu-hpcg:r1/final_gflops
-        - gpu-hpcg:r1/final_bandwidth
-        - gpu-hpcg:r1/final_gflops_per_process
-        - gpu-hpcg:r1/final_bandwidth_per_process
-        - gpu-hpcg:r1/ddot_gflops
-        - gpu-hpcg:r1/ddot_bandwidth
-        - gpu-hpcg:r1/ddot_gflops_per_process
-        - gpu-hpcg:r1/ddot_bandwidth_per_process
-        - gpu-hpcg:r1/waxpby_gflops
-        - gpu-hpcg:r1/waxpby_bandwidth
-        - gpu-hpcg:r1/waxpby_gflops_per_process
-        - gpu-hpcg:r1/waxpby_bandwidth_per_process
-        - gpu-hpcg:r1/spmv_gflops
-        - gpu-hpcg:r1/spmv_bandwidth
-        - gpu-hpcg:r1/spmv_gflops_per_process
-        - gpu-hpcg:r1/spmv_bandwidth_per_process
-        - gpu-hpcg:r1/mg_gflops
-        - gpu-hpcg:r1/mg_bandwidth
-        - gpu-hpcg:r1/mg_gflops_per_process
-        - gpu-hpcg:r1/mg_bandwidth_per_process
-        - gpu-hpcg:r1/total_gflops
-        - gpu-hpcg:r1/total_bandwidth
-        - gpu-hpcg:r1/total_gflops_per_process
-        - gpu-hpcg:r1/total_bandwidth_per_process
-        - gpu-hpcg:r1/local_domain_x
-        - gpu-hpcg:r1/local_domain_y
-        - gpu-hpcg:r1/local_domain_z
-        - gpu-hpcg:r1/process_domain_x
-        - gpu-hpcg:r1/process_domain_y
-        - gpu-hpcg:r1/process_domain_z
+        - gpu-hpcg:r1/(setup_time|optimization_time|total_time)_p1x1x1_n560x280x280
+        - gpu-hpcg:r1/(ddot|waxpby|spmv|mg|total|final)_p1x1x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
 
     gpu_hpcg_r2:
       statistics: mean
       categories: HPCG gpu-hpcg:r2
       metrics:
-        - gpu-hpcg:r2/is_valid
-        - gpu-hpcg:r2/final_gflops
-        - gpu-hpcg:r2/final_bandwidth
-        - gpu-hpcg:r2/final_gflops_per_process
-        - gpu-hpcg:r2/final_bandwidth_per_process
-        - gpu-hpcg:r2/ddot_gflops
-        - gpu-hpcg:r2/ddot_bandwidth
-        - gpu-hpcg:r2/ddot_gflops_per_process
-        - gpu-hpcg:r2/ddot_bandwidth_per_process
-        - gpu-hpcg:r2/waxpby_gflops
-        - gpu-hpcg:r2/waxpby_bandwidth
-        - gpu-hpcg:r2/waxpby_gflops_per_process
-        - gpu-hpcg:r2/waxpby_bandwidth_per_process
-        - gpu-hpcg:r2/spmv_gflops
-        - gpu-hpcg:r2/spmv_bandwidth
-        - gpu-hpcg:r2/spmv_gflops_per_process
-        - gpu-hpcg:r2/spmv_bandwidth_per_process
-        - gpu-hpcg:r2/mg_gflops
-        - gpu-hpcg:r2/mg_bandwidth
-        - gpu-hpcg:r2/mg_gflops_per_process
-        - gpu-hpcg:r2/mg_bandwidth_per_process
-        - gpu-hpcg:r2/total_gflops
-        - gpu-hpcg:r2/total_bandwidth
-        - gpu-hpcg:r2/total_gflops_per_process
-        - gpu-hpcg:r2/total_bandwidth_per_process
-        - gpu-hpcg:r2/local_domain_x
-        - gpu-hpcg:r2/local_domain_y
-        - gpu-hpcg:r2/local_domain_z
-        - gpu-hpcg:r2/process_domain_x
-        - gpu-hpcg:r2/process_domain_y
-        - gpu-hpcg:r2/process_domain_z
+        - gpu-hpcg:r2/(setup_time|optimization_time|total_time)_p2x1x1_n560x280x280
+        - gpu-hpcg:r2/(ddot|waxpby|spmv|mg|total|final)_p2x1x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
 
     gpu_hpcg_r4:
       statistics: mean
       categories: HPCG gpu-hpcg:r4
       metrics:
-        - gpu-hpcg:r4/is_valid
-        - gpu-hpcg:r4/final_gflops
-        - gpu-hpcg:r4/final_bandwidth
-        - gpu-hpcg:r4/final_gflops_per_process
-        - gpu-hpcg:r4/final_bandwidth_per_process
-        - gpu-hpcg:r4/ddot_gflops
-        - gpu-hpcg:r4/ddot_bandwidth
-        - gpu-hpcg:r4/ddot_gflops_per_process
-        - gpu-hpcg:r4/ddot_bandwidth_per_process
-        - gpu-hpcg:r4/waxpby_gflops
-        - gpu-hpcg:r4/waxpby_bandwidth
-        - gpu-hpcg:r4/waxpby_gflops_per_process
-        - gpu-hpcg:r4/waxpby_bandwidth_per_process
-        - gpu-hpcg:r4/spmv_gflops
-        - gpu-hpcg:r4/spmv_bandwidth
-        - gpu-hpcg:r4/spmv_gflops_per_process
-        - gpu-hpcg:r4/spmv_bandwidth_per_process
-        - gpu-hpcg:r4/mg_gflops
-        - gpu-hpcg:r4/mg_bandwidth
-        - gpu-hpcg:r4/mg_gflops_per_process
-        - gpu-hpcg:r4/mg_bandwidth_per_process
-        - gpu-hpcg:r4/total_gflops
-        - gpu-hpcg:r4/total_bandwidth
-        - gpu-hpcg:r4/total_gflops_per_process
-        - gpu-hpcg:r4/total_bandwidth_per_process
-        - gpu-hpcg:r4/local_domain_x
-        - gpu-hpcg:r4/local_domain_y
-        - gpu-hpcg:r4/local_domain_z
-        - gpu-hpcg:r4/process_domain_x
-        - gpu-hpcg:r4/process_domain_y
-        - gpu-hpcg:r4/process_domain_z
+        - gpu-hpcg:r4/(setup_time|optimization_time|total_time)_p2x2x1_n560x280x280
+        - gpu-hpcg:r4/(ddot|waxpby|spmv|mg|total|final)_p2x2x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
 
     gpu_hpcg_r8:
       statistics: mean
       categories: HPCG gpu-hpcg:r8
       metrics:
-        - gpu-hpcg:r8/is_valid
-        - gpu-hpcg:r8/final_gflops
-        - gpu-hpcg:r8/final_bandwidth
-        - gpu-hpcg:r8/final_gflops_per_process
-        - gpu-hpcg:r8/final_bandwidth_per_process
-        - gpu-hpcg:r8/ddot_gflops
-        - gpu-hpcg:r8/ddot_bandwidth
-        - gpu-hpcg:r8/ddot_gflops_per_process
-        - gpu-hpcg:r8/ddot_bandwidth_per_process
-        - gpu-hpcg:r8/waxpby_gflops
-        - gpu-hpcg:r8/waxpby_bandwidth
-        - gpu-hpcg:r8/waxpby_gflops_per_process
-        - gpu-hpcg:r8/waxpby_bandwidth_per_process
-        - gpu-hpcg:r8/spmv_gflops
-        - gpu-hpcg:r8/spmv_bandwidth
-        - gpu-hpcg:r8/spmv_gflops_per_process
-        - gpu-hpcg:r8/spmv_bandwidth_per_process
-        - gpu-hpcg:r8/mg_gflops
-        - gpu-hpcg:r8/mg_bandwidth
-        - gpu-hpcg:r8/mg_gflops_per_process
-        - gpu-hpcg:r8/mg_bandwidth_per_process
-        - gpu-hpcg:r8/total_gflops
-        - gpu-hpcg:r8/total_bandwidth
-        - gpu-hpcg:r8/total_gflops_per_process
-        - gpu-hpcg:r8/total_bandwidth_per_process
-        - gpu-hpcg:r8/local_domain_x
-        - gpu-hpcg:r8/local_domain_y
-        - gpu-hpcg:r8/local_domain_z
-        - gpu-hpcg:r8/process_domain_x
-        - gpu-hpcg:r8/process_domain_y
-        - gpu-hpcg:r8/process_domain_z
+        - gpu-hpcg:r8/(setup_time|optimization_time|total_time)_p2x2x2_n560x280x280
+        - gpu-hpcg:r8/(ddot|waxpby|spmv|mg|total|final)_p2x2x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
 
     gpu_hpcg_r16:
       statistics: mean
       categories: HPCG gpu-hpcg:r16
       metrics:
-        - gpu-hpcg:r16/is_valid
-        - gpu-hpcg:r16/final_gflops
-        - gpu-hpcg:r16/final_bandwidth
-        - gpu-hpcg:r16/final_gflops_per_process
-        - gpu-hpcg:r16/final_bandwidth_per_process
-        - gpu-hpcg:r16/ddot_gflops
-        - gpu-hpcg:r16/ddot_bandwidth
-        - gpu-hpcg:r16/ddot_gflops_per_process
-        - gpu-hpcg:r16/ddot_bandwidth_per_process
-        - gpu-hpcg:r16/waxpby_gflops
-        - gpu-hpcg:r16/waxpby_bandwidth
-        - gpu-hpcg:r16/waxpby_gflops_per_process
-        - gpu-hpcg:r16/waxpby_bandwidth_per_process
-        - gpu-hpcg:r16/spmv_gflops
-        - gpu-hpcg:r16/spmv_bandwidth
-        - gpu-hpcg:r16/spmv_gflops_per_process
-        - gpu-hpcg:r16/spmv_bandwidth_per_process
-        - gpu-hpcg:r16/mg_gflops
-        - gpu-hpcg:r16/mg_bandwidth
-        - gpu-hpcg:r16/mg_gflops_per_process
-        - gpu-hpcg:r16/mg_bandwidth_per_process
-        - gpu-hpcg:r16/total_gflops
-        - gpu-hpcg:r16/total_bandwidth
-        - gpu-hpcg:r16/total_gflops_per_process
-        - gpu-hpcg:r16/total_bandwidth_per_process
-        - gpu-hpcg:r16/local_domain_x
-        - gpu-hpcg:r16/local_domain_y
-        - gpu-hpcg:r16/local_domain_z
-        - gpu-hpcg:r16/process_domain_x
-        - gpu-hpcg:r16/process_domain_y
-        - gpu-hpcg:r16/process_domain_z
+        - gpu-hpcg:r16/(setup_time|optimization_time|total_time)_p4x2x2_n560x280x280
+        - gpu-hpcg:r16/(ddot|waxpby|spmv|mg|total|final)_p4x2x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
 
     gpu_hpcg_r32:
       statistics: mean
       categories: HPCG gpu-hpcg:r32
       metrics:
-        - gpu-hpcg:r32/is_valid
-        - gpu-hpcg:r32/final_gflops
-        - gpu-hpcg:r32/final_bandwidth
-        - gpu-hpcg:r32/final_gflops_per_process
-        - gpu-hpcg:r32/final_bandwidth_per_process
-        - gpu-hpcg:r32/ddot_gflops
-        - gpu-hpcg:r32/ddot_bandwidth
-        - gpu-hpcg:r32/ddot_gflops_per_process
-        - gpu-hpcg:r32/ddot_bandwidth_per_process
-        - gpu-hpcg:r32/waxpby_gflops
-        - gpu-hpcg:r32/waxpby_bandwidth
-        - gpu-hpcg:r32/waxpby_gflops_per_process
-        - gpu-hpcg:r32/waxpby_bandwidth_per_process
-        - gpu-hpcg:r32/spmv_gflops
-        - gpu-hpcg:r32/spmv_bandwidth
-        - gpu-hpcg:r32/spmv_gflops_per_process
-        - gpu-hpcg:r32/spmv_bandwidth_per_process
-        - gpu-hpcg:r32/mg_gflops
-        - gpu-hpcg:r32/mg_bandwidth
-        - gpu-hpcg:r32/mg_gflops_per_process
-        - gpu-hpcg:r32/mg_bandwidth_per_process
-        - gpu-hpcg:r32/total_gflops
-        - gpu-hpcg:r32/total_bandwidth
-        - gpu-hpcg:r32/total_gflops_per_process
-        - gpu-hpcg:r32/total_bandwidth_per_process
-        - gpu-hpcg:r32/local_domain_x
-        - gpu-hpcg:r32/local_domain_y
-        - gpu-hpcg:r32/local_domain_z
-        - gpu-hpcg:r32/process_domain_x
-        - gpu-hpcg:r32/process_domain_y
-        - gpu-hpcg:r32/process_domain_z
+        - gpu-hpcg:r32/(setup_time|optimization_time|total_time)_p4x4x2_n560x280x280
+        - gpu-hpcg:r32/(ddot|waxpby|spmv|mg|total|final)_p4x4x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
