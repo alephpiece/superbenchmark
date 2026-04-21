@@ -27,15 +27,8 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
         'Setup Time': 'setup_time',
         'Optimization Time': 'optimization_time'
     }
-    _domain_metric_map = {
-        'Local domain': 'local_domain',
-        'Global domain': 'global_domain',
-        'Process domain': 'process_domain'
-    }
     _float_pattern = re.compile(r'([0-9]+(?:\.[0-9]+)?)\s+(GFlop/s|GB/s)')
-    _dimension_pattern = re.compile(r'([0-9]+)\s*x\s*([0-9]+)\s*x\s*([0-9]+)')
     _time_value_pattern = re.compile(r'([0-9]+(?:\.[0-9]+)?)\s+sec')
-    _invalid_markers = ['*** WARNING *** INVALID RUN', '*** WARNING *** THIS IS NOT A VALID RUN ***']
 
     def __init__(self, name, parameters=''):
         """Constructor.
@@ -203,15 +196,6 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
             'setup_time',
             'optimization_time',
             'total_time',
-            'local_domain_x',
-            'local_domain_y',
-            'local_domain_z',
-            'global_domain_x',
-            'global_domain_y',
-            'global_domain_z',
-            'process_domain_x',
-            'process_domain_y',
-            'process_domain_z',
         }
 
         for raw_line in raw_output.splitlines():
@@ -226,10 +210,6 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
             if self._parse_time_line(line, parsed_results):
                 continue
 
-            self._parse_domain_line(line, parsed_results)
-
-        parsed_results['is_valid'] = 0 if any(marker in raw_output for marker in self._invalid_markers) else 1
-
         missing_metrics = sorted(metric for metric in required_metrics if metric not in parsed_results)
         if missing_metrics:
             logger.error(
@@ -241,9 +221,31 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
             return False
 
         for metric, value in parsed_results.items():
-            self._result.add_result(metric, value)
+            self._result.add_result(self._format_metric_name(metric), value)
 
         return True
+
+    def _format_metric_name(self, metric):
+        """Format a rocHPCG metric with the configured process domain and local problem size."""
+        metric_suffixes = (
+            'gflops_per_process',
+            'bandwidth_per_process',
+            'gflops',
+            'bandwidth',
+        )
+        workload = (
+            f'p{self._args.npx}x{self._args.npy}x{self._args.npz}_'
+            f'n{self._args.nx}x{self._args.ny}x{self._args.nz}'
+        )
+        if metric in self._time_metric_map.values():
+            return f'{metric}_{workload}'
+
+        for suffix in metric_suffixes:
+            suffix_token = f'_{suffix}'
+            if metric.endswith(suffix_token):
+                return f'{metric[:-len(suffix_token)]}_{workload}_{suffix}'
+
+        return metric
 
     def _parse_operation_line(self, line, parsed_results):
         """Parse one rocHPCG operation summary line."""
@@ -282,22 +284,5 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
             if match:
                 parsed_results[metric] = float(match.group(1))
                 return True
-
-        return False
-
-    def _parse_domain_line(self, line, parsed_results):
-        """Parse one rocHPCG domain summary line."""
-        for label, metric_prefix in self._domain_metric_map.items():
-            if not line.startswith(label + ':'):
-                continue
-
-            match = self._dimension_pattern.search(line)
-            if not match:
-                return False
-
-            parsed_results[f'{metric_prefix}_x'] = int(match.group(1))
-            parsed_results[f'{metric_prefix}_y'] = int(match.group(2))
-            parsed_results[f'{metric_prefix}_z'] = int(match.group(3))
-            return True
 
         return False

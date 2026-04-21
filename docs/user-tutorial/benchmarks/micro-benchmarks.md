@@ -198,21 +198,20 @@ Performed by [rocHPCG](https://github.com/ROCm/rocHPCG).
 
 #### Metrics
 
-rocHPCG reports operation-level metrics for `final`, `ddot`, `waxpby`, `spmv`, `mg`, and `total`.
+rocHPCG reports performance and time metrics.
+Performance metrics are reported for `final`, `ddot`, `waxpby`, `spmv`, `mg`, and `total`.
+The metric key includes the configured process domain and local problem size:
+`p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`.
 
-| Name                                                | Unit             | Description                                             |
-|-----------------------------------------------------|------------------|---------------------------------------------------------|
-| gpu-hpcg/${operation}\_gflops                       | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
-| gpu-hpcg/${operation}\_bandwidth                    | bandwidth (GB/s) | Bandwidth for the specified rocHPCG operation.          |
-| gpu-hpcg/${operation}\_gflops_per_process           | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
-| gpu-hpcg/${operation}\_bandwidth_per_process        | bandwidth (GB/s) | Per-process bandwidth for the specified operation.      |
-| gpu-hpcg/setup_time                                 | time (s)         | Setup phase duration.                                   |
-| gpu-hpcg/optimization_time                          | time (s)         | Optimization phase duration.                            |
-| gpu-hpcg/total_time                                 | time (s)         | Total runtime.                                          |
-| gpu-hpcg/is_valid                                   |                  | Run validity inferred from rocHPCG invalid markers.     |
-| gpu-hpcg/local_domain_[x\|y\|z]                     |                  | Local domain size for each dimension.                   |
-| gpu-hpcg/global_domain_[x\|y\|z]                    |                  | Global domain size for each dimension.                  |
-| gpu-hpcg/process_domain_[x\|y\|z]                   |                  | Process topology for each dimension.                    |
+| Name                                                                                             | Unit             | Description                                             |
+|--------------------------------------------------------------------------------------------------|------------------|---------------------------------------------------------|
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops`                         | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth`                      | bandwidth (GB/s) | Bandwidth for the specified rocHPCG operation.          |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops_per_process`             | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth_per_process`          | bandwidth (GB/s) | Per-process bandwidth for the specified operation.      |
+| `gpu-hpcg/setup_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                                  | time (s)         | Setup phase duration.                                   |
+| `gpu-hpcg/optimization_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                           | time (s)         | Optimization phase duration.                            |
+| `gpu-hpcg/total_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                                  | time (s)         | Total runtime.                                          |
 
 ### `cpu-stream`
 
