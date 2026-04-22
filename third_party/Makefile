@@ -207,9 +207,14 @@ rocm_hpl: sb_micro_path
 ifneq (,$(wildcard rocHPL/install.sh))
 	cd ./rocHPL && \
 	git apply ../rochpl_dtk26.patch && \
-	./install.sh --with-rocm=$(ROCM_PATH) --with-rocblas=$(ROCM_PATH)/rocblas --with-mpi=$(MPI_HOME) --arch=gfx936,gfx938
+	./install.sh --with-rocm=$(ROCM_PATH) \
+		--with-rocblas=$(ROCM_PATH)/rocblas \
+		--with-mpi=$(MPI_HOME) \
+		--arch=gfx936,gfx938
 	cp -v ./rocHPL/build/bin/rochpl $(SB_MICRO_PATH)/bin/
-	chmod +x $(SB_MICRO_PATH)/bin/rochpl
+	cp -v ./rocHPL/build/HPL.dat $(SB_MICRO_PATH)/bin/
+	cp -v ./run_rochpl.sh $(SB_MICRO_PATH)/bin/run_rochpl
+	chmod +x $(SB_MICRO_PATH)/bin/rochpl $(SB_MICRO_PATH)/bin/run_rochpl
 endif
 
 # Build rocHPL-MxP and stage the binary and run script for SuperBench DTK image.
@@ -217,8 +222,7 @@ rocm_hpl_mxp: sb_micro_path
 ifneq (,$(wildcard rocHPL-MxP/install.sh))
 	cd ./rocHPL-MxP && \
 	git apply ../rochplmxp_dtk26.patch && \
-	./install.sh --prefix=$(SB_MICRO_PATH) \
-		--with-rocm=$(ROCM_PATH) \
+	./install.sh --with-rocm=$(ROCM_PATH) \
 		--with-rocblas=$(ROCM_PATH)/rocblas \
 		--with-rocsolver=$(ROCM_PATH)/rocsolver \
 		--with-mpi=$(MPI_HOME) \
