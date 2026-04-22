@@ -45,11 +45,11 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         ret, args = self._parse_args(benchmark)
 
         self.assertTrue(ret)
-        self.assertEqual(1, args.P)
-        self.assertEqual(1, args.Q)
-        self.assertEqual(45312, args.N)
-        self.assertEqual(384, args.NB)
-        self.assertEqual(0, args.BCAST)
+        self.assertEqual(1, args.p)
+        self.assertEqual(1, args.q)
+        self.assertEqual(45312, args.n)
+        self.assertEqual(384, args.nb)
+        self.assertEqual(0, args.bcast)
         self.assertEqual(0, args.warmup)
         self.assertEqual(1, args.iterations)
         self.assertEqual('max', args.reduce_op)
@@ -64,11 +64,11 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         ret, args = self._parse_args(benchmark)
 
         self.assertTrue(ret)
-        self.assertEqual(1, args.P)
-        self.assertEqual(1, args.Q)
-        self.assertEqual(61440, args.N)
-        self.assertEqual(2560, args.NB)
-        self.assertEqual(0, args.BCAST)
+        self.assertEqual(1, args.p)
+        self.assertEqual(1, args.q)
+        self.assertEqual(61440, args.n)
+        self.assertEqual(2560, args.nb)
+        self.assertEqual(0, args.bcast)
 
         benchmark._tv = benchmark._format_tv()
         self.assertEqual('WC0', benchmark._tv)
@@ -76,7 +76,7 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
 
     def test_dtk_hpl_sample_metric_workload(self):
         """Test DTK gpu-hpl workload formatting with sample parameters."""
-        benchmark = DtkHplBenchmark('gpu-hpl', parameters='--P 4 --Q 1 --N 8192 --NB 512 --BCAST 1')
+        benchmark = DtkHplBenchmark('gpu-hpl', parameters='--p 4 --q 1 --n 8192 --nb 512 --bcast 1')
         ret, _ = self._parse_args(benchmark)
 
         self.assertTrue(ret)
@@ -86,7 +86,7 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
 
     def test_dtk_hpl_mxp_sample_metric_workload(self):
         """Test DTK gpu-hpl-mxp workload formatting with sample parameters."""
-        benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1')
+        benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--p 4 --q 1 --n 8192 --nb 4096 --bcast 1')
         ret, _ = self._parse_args(benchmark)
 
         self.assertTrue(ret)
@@ -96,8 +96,8 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
 
     def test_dtk_hpl_only_arguments_are_not_accepted_by_mxp(self):
         """Test rocHPL-only arguments are not accepted by gpu-hpl-mxp."""
-        hpl_benchmark = DtkHplBenchmark('gpu-hpl', parameters='--PFACT 2')
-        hpl_mxp_benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--PFACT 2')
+        hpl_benchmark = DtkHplBenchmark('gpu-hpl', parameters='--pfact 2')
+        hpl_mxp_benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--pfact 2')
 
         hpl_ret, _ = self._parse_args(hpl_benchmark)
         hpl_mxp_ret, _ = self._parse_args(hpl_mxp_benchmark)
@@ -136,7 +136,7 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
     def test_dtk_hpl_mxp_preprocess_generates_dat_file(self):
         """Test DTK gpu-hpl-mxp dat file and command generation."""
         benchmark = DtkHplMxpBenchmark(
-            'gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --warmup 1 --iterations 5'
+            'gpu-hpl-mxp', parameters='--p 4 --q 1 --n 8192 --nb 4096 --bcast 1 --warmup 1 --iterations 5'
         )
 
         self.assertTrue(benchmark._preprocess())
@@ -161,7 +161,7 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
     def test_dtk_hpl_result_parsing_with_warmup_and_max_reduce(self):
         """Test DTK gpu-hpl parses generated output and reduces by max FLOPS."""
         benchmark = DtkHplBenchmark(
-            'gpu-hpl', parameters='--P 4 --Q 1 --N 8192 --NB 512 --BCAST 1 --warmup 1 --iterations 3 --reduce-op max'
+            'gpu-hpl', parameters='--p 4 --q 1 --n 8192 --nb 512 --bcast 1 --warmup 1 --iterations 3 --reduce-op max'
         )
 
         self.assertTrue(benchmark._preprocess())
@@ -199,7 +199,7 @@ WC11R2R32        8192   512     4     1               0.67              5.450e+0
         """Test DTK gpu-hpl-mxp parses output when output N differs from input N."""
         benchmark = DtkHplMxpBenchmark(
             'gpu-hpl-mxp',
-            parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --warmup 1 --iterations 2 --reduce-op min'
+            parameters='--p 4 --q 1 --n 8192 --nb 4096 --bcast 1 --warmup 1 --iterations 2 --reduce-op min'
         )
 
         self.assertTrue(benchmark._preprocess())
@@ -230,7 +230,7 @@ WC1            16384  4096     4     1               0.78              3.767e+03
     def test_dtk_hpl_result_parsing_with_median_reduce(self):
         """Test DTK gpu-hpl median reduce uses reciprocal time."""
         benchmark = DtkHplBenchmark(
-            'gpu-hpl', parameters='--P 4 --Q 1 --N 8192 --NB 512 --BCAST 1 --iterations 4 --reduce-op median'
+            'gpu-hpl', parameters='--p 4 --q 1 --n 8192 --nb 512 --bcast 1 --iterations 4 --reduce-op median'
         )
 
         self.assertTrue(benchmark._preprocess())
@@ -265,7 +265,7 @@ WC11R2R32        8192   512     4     1               0.10              8.000e+0
     def test_dtk_hpl_result_parsing_with_sample_output_file(self):
         """Test DTK gpu-hpl parses a full sample output file."""
         benchmark = DtkHplBenchmark(
-            'gpu-hpl', parameters='--P 4 --Q 1 --N 8192 --NB 512 --BCAST 1 --warmup 1 --iterations 5'
+            'gpu-hpl', parameters='--p 4 --q 1 --n 8192 --nb 512 --bcast 1 --warmup 1 --iterations 5'
         )
 
         self.assertTrue(benchmark._preprocess())
@@ -281,7 +281,7 @@ WC11R2R32        8192   512     4     1               0.10              8.000e+0
     def test_dtk_hpl_mxp_result_parsing_with_sample_output_file(self):
         """Test DTK gpu-hpl-mxp parses a full sample output file."""
         benchmark = DtkHplMxpBenchmark(
-            'gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --iterations 6'
+            'gpu-hpl-mxp', parameters='--p 4 --q 1 --n 8192 --nb 4096 --bcast 1 --iterations 6'
         )
 
         self.assertTrue(benchmark._preprocess())

@@ -109,46 +109,46 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
         super().add_parser_arguments()
 
         self._parser.add_argument(
-            '-P',
-            '--P',
+            '--p',
+            dest='p',
             type=int,
             default=1,
             required=False,
             help='Specific MPI grid size: the number of rows in MPI grid.',
         )
         self._parser.add_argument(
-            '-Q',
-            '--Q',
+            '--q',
+            dest='q',
             type=int,
             default=1,
             required=False,
             help='Specific MPI grid size: the number of columns in MPI grid.',
         )
         self._parser.add_argument(
-            '-p',
-            '--p',
+            '--local-p',
+            dest='local_p',
             type=int,
             required=False,
             help='Specific node-local MPI grid size: the number of rows in node-local MPI grid.',
         )
         self._parser.add_argument(
-            '-q',
-            '--q',
+            '--local-q',
+            dest='local_q',
             type=int,
             required=False,
             help='Specific node-local MPI grid size: the number of columns in node-local MPI grid.',
         )
         self._parser.add_argument(
-            '-N',
-            '--N',
+            '--n',
+            dest='n',
             type=int,
             default=self._default_n,
             required=False,
             help='Specific matrix size: the number of rows/columns in global matrix.',
         )
         self._parser.add_argument(
-            '-NB',
-            '--NB',
+            '--nb',
+            dest='nb',
             type=int,
             default=self._default_nb,
             required=False,
@@ -178,7 +178,8 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
             help='Reduce operator for aggregating measurement runs by FLOPS.',
         )
         self._parser.add_argument(
-            '--PMAP',
+            '--pmap',
+            dest='pmap',
             type=int,
             default=1,
             choices=[0, 1],
@@ -186,7 +187,8 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
             help='Process mapping: 0 for row-major, 1 for column-major.',
         )
         self._parser.add_argument(
-            '--BCAST',
+            '--bcast',
+            dest='bcast',
             type=int,
             default=0,
             choices=[0, 1, 2, 3, 4, 5],
@@ -233,15 +235,15 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
         bin_path = os.path.join(self._args.bin_dir, self._bin_name)
         command = (
             f'{bin_path}'
-            f' -P {self._args.P}'
-            f' -Q {self._args.Q}'
+            f' -P {self._args.p}'
+            f' -Q {self._args.q}'
             f' --it {self._args.warmup + self._args.iterations}'
             f' -i {self._dat_file_name}'
         )
-        if self._args.p is not None:
-            command += f' -p {self._args.p}'
-        if self._args.q is not None:
-            command += f' -q {self._args.q}'
+        if self._args.local_p is not None:
+            command += f' -p {self._args.local_p}'
+        if self._args.local_q is not None:
+            command += f' -q {self._args.local_q}'
 
         self._commands = [command]
         return True
@@ -315,9 +317,9 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
         """Return whether a parsed output row matches the current benchmark input."""
         if row['tv'] != output_tv:
             return False
-        if row['nb'] != self._args.NB or row['p'] != self._args.P or row['q'] != self._args.Q:
+        if row['nb'] != self._args.nb or row['p'] != self._args.p or row['q'] != self._args.q:
             return False
-        if self._match_output_n() and row['n'] != self._args.N:
+        if self._match_output_n() and row['n'] != self._args.n:
             return False
         return True
 
@@ -353,7 +355,7 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
 
     def _format_workload(self):
         """Format the metric workload suffix from benchmark input arguments."""
-        return f'{self._tv}_P{self._args.P}_Q{self._args.Q}_N{self._args.N}_NB{self._args.NB}'
+        return f'{self._tv}_P{self._args.p}_Q{self._args.q}_N{self._args.n}_NB{self._args.nb}'
 
     def _format_file_prefix(self):
         """Format generated HPL.dat/HPL.out file prefix."""

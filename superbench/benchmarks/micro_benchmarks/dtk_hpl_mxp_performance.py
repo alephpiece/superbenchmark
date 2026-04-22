@@ -20,7 +20,7 @@ class DtkHplMxpBenchmark(GpuHplBenchmark):
 
     def _format_tv(self):
         """Format the expected rocHPL-MxP T/V field from input arguments."""
-        return format_hpl_mxp_tv(self._args.PMAP, self._args.BCAST)
+        return format_hpl_mxp_tv(self._args.pmap, self._args.bcast)
 
     def _match_output_n(self):
         """Return whether parsed rocHPL-MxP output N must match the input N."""
@@ -34,15 +34,15 @@ class DtkHplMxpBenchmark(GpuHplBenchmark):
             f'{self._out_file_name} output file name (if any)\n'
             '0            device out (6=stdout,7=stderr,file)\n'
             '1            # of problems sizes (N)\n'
-            f'{self._args.N}         Ns\n'
+            f'{self._args.n}         Ns\n'
             '1            # of NBs\n'
-            f'{self._args.NB}         NBs\n'
-            f'{self._args.PMAP}            PMAP process mapping (0=Row-,1=Column-major)\n'
-            f'{self._args.P}            P\n'
-            f'{self._args.Q}            Q\n'
+            f'{self._args.nb}         NBs\n'
+            f'{self._args.pmap}            PMAP process mapping (0=Row-,1=Column-major)\n'
+            f'{self._args.p}            P\n'
+            f'{self._args.q}            Q\n'
             f'{self._args.threshold}         threshold\n'
             '1            # of broadcast\n'
-            f'{self._args.BCAST}            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)\n'
+            f'{self._args.bcast}            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)\n'
         )
 
 

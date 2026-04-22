@@ -203,28 +203,28 @@ The generated file name and output file name are derived from the same workload 
 
 | Parameter              | Default | Description                                                                 |
 |------------------------|---------|-----------------------------------------------------------------------------|
-| `--P`                  | `1`     | Number of rows in the MPI process grid.                                     |
-| `--Q`                  | `1`     | Number of columns in the MPI process grid.                                  |
-| `--p`                  |         | Optional number of rows in the node-local MPI process grid.                 |
-| `--q`                  |         | Optional number of columns in the node-local MPI process grid.              |
-| `--N`                  | `45312` | Global matrix size.                                                         |
-| `--NB`                 | `384`   | Panel/block size.                                                           |
+| `--p`                  | `1`     | Number of rows in the MPI process grid.                                     |
+| `--q`                  | `1`     | Number of columns in the MPI process grid.                                  |
+| `--local-p`            |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--local-q`            |         | Optional number of columns in the node-local MPI process grid.              |
+| `--n`                  | `45312` | Global matrix size.                                                         |
+| `--nb`                 | `384`   | Panel/block size.                                                           |
 | `--warmup`             | `0`     | Number of warmup HPL runs to exclude from result aggregation.               |
 | `--iterations`         | `1`     | Number of measured HPL runs to include in result aggregation.               |
 | `--reduce-op`          | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
-| `--PMAP`               | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
-| `--BCAST`              | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--pmap`               | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--bcast`              | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
 | `--threshold`          | `16.0`  | Residual check threshold.                                                   |
-| `--PFACT`              | `2`     | Panel factorization: `0` for left, `1` for Crout, `2` for right.            |
-| `--NBMIN`              | `32`    | Recursive stopping criterion.                                               |
-| `--NDIV`               | `2`     | Number of panels in recursion.                                              |
-| `--RFACT`              | `2`     | Recursive panel factorization: `0` for left, `1` for Crout, `2` for right.  |
-| `--DEPTH`              | `1`     | Lookahead depth.                                                            |
-| `--SWAP`               | `1`     | Swapping algorithm: `0` for binary exchange, `1` for long, `2` for mix.     |
+| `--pfact`              | `2`     | Panel factorization: `0` for left, `1` for Crout, `2` for right.            |
+| `--nbmin`              | `32`    | Recursive stopping criterion.                                               |
+| `--ndiv`               | `2`     | Number of panels in recursion.                                              |
+| `--rfact`              | `2`     | Recursive panel factorization: `0` for left, `1` for Crout, `2` for right.  |
+| `--depth`              | `1`     | Lookahead depth.                                                            |
+| `--swap`               | `1`     | Swapping algorithm: `0` for binary exchange, `1` for long, `2` for mix.     |
 | `--swapping-threshold` | `64`    | Swapping threshold.                                                         |
-| `--L1`                 | `0`     | L1 storage form: `0` for transposed, `1` for non-transposed.                |
-| `--U`                  | `0`     | U storage form: `0` for transposed, `1` for non-transposed.                 |
-| `--Equilibration`      | `0`     | Equilibration: `0` for no, `1` for yes.                                     |
+| `--l1`                 | `0`     | L1 storage form: `0` for transposed, `1` for non-transposed.                |
+| `--u`                  | `0`     | U storage form: `0` for transposed, `1` for non-transposed.                 |
+| `--equilibration`      | `0`     | Equilibration: `0` for no, `1` for yes.                                     |
 | `--memory-alignment`   | `8`     | Memory alignment in doubles.                                                |
 
 `--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
@@ -260,17 +260,17 @@ The generated file name and output file name are derived from the same workload 
 
 | Parameter      | Default | Description                                                                 |
 |----------------|---------|-----------------------------------------------------------------------------|
-| `--P`          | `1`     | Number of rows in the MPI process grid.                                     |
-| `--Q`          | `1`     | Number of columns in the MPI process grid.                                  |
-| `--p`          |         | Optional number of rows in the node-local MPI process grid.                 |
-| `--q`          |         | Optional number of columns in the node-local MPI process grid.              |
-| `--N`          | `61440` | Global matrix size.                                                         |
-| `--NB`         | `2560`  | Panel/block size.                                                           |
+| `--p`          | `1`     | Number of rows in the MPI process grid.                                     |
+| `--q`          | `1`     | Number of columns in the MPI process grid.                                  |
+| `--local-p`    |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--local-q`    |         | Optional number of columns in the node-local MPI process grid.              |
+| `--n`          | `61440` | Global matrix size.                                                         |
+| `--nb`         | `2560`  | Panel/block size.                                                           |
 | `--warmup`     | `0`     | Number of warmup HPL-MxP runs to exclude from result aggregation.           |
 | `--iterations` | `1`     | Number of measured HPL-MxP runs to include in result aggregation.           |
 | `--reduce-op`  | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
-| `--PMAP`       | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
-| `--BCAST`      | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--pmap`       | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--bcast`      | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
 | `--threshold`  | `16.0`  | Residual check threshold.                                                   |
 
 `--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
