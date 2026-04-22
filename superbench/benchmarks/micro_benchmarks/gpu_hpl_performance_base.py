@@ -295,6 +295,11 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
                     'time': float(result_match.group('time')),
                     'flops': float(result_match.group('flops')),
                 }
+                if pending_row['time'] <= 0:
+                    logger.error(
+                        'Invalid HPL result time - benchmark: {}, time: {}.'.format(self._name, pending_row['time'])
+                    )
+                    pending_row = None
                 continue
 
             residual_match = _HPL_RESIDUAL_PATTERN.search(line)
@@ -318,22 +323,21 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
 
     def _reduce_rows(self, rows):
         """Reduce measured rows according to FLOPS-oriented reduce semantics."""
+        flops = self._reduce_values(row['flops'] for row in rows)
+        reciprocal_time = self._reduce_values(1 / row['time'] for row in rows)
+        return flops, 1 / reciprocal_time
+
+    def _reduce_values(self, values):
+        """Reduce values with the configured performance-oriented reduce operator."""
+        values = list(values)
         reduce_op = self._args.reduce_op
         if reduce_op == 'max':
-            row = max(rows, key=lambda result_row: result_row['flops'])
-            return row['flops'], row['time']
+            return max(values)
         if reduce_op == 'min':
-            row = min(rows, key=lambda result_row: result_row['flops'])
-            return row['flops'], row['time']
+            return min(values)
         if reduce_op == 'mean':
-            return (
-                statistics.mean(row['flops'] for row in rows),
-                statistics.mean(row['time'] for row in rows),
-            )
-
-        sorted_rows = sorted(rows, key=lambda result_row: result_row['flops'])
-        row = sorted_rows[len(sorted_rows) // 2]
-        return row['flops'], row['time']
+            return statistics.mean(values)
+        return statistics.median(values)
 
     def _format_tv(self):
         """Format the expected T/V field from benchmark input arguments."""

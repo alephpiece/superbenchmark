@@ -227,6 +227,10 @@ The generated file name and output file name are derived from the same workload 
 | `--Equilibration`      | `0`     | Equilibration: `0` for no, `1` for yes.                                     |
 | `--memory-alignment`   | `8`     | Memory alignment in doubles.                                                |
 
+`--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
+The reported `_time` metric is reduced in the same performance direction by applying `--reduce-op` to `1 / time`
+and then converting the result back to seconds.
+
 #### Metrics
 
 rocHPL reports performance, time, and correctness metrics.
@@ -268,6 +272,10 @@ The generated file name and output file name are derived from the same workload 
 | `--PMAP`       | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
 | `--BCAST`      | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
 | `--threshold`  | `16.0`  | Residual check threshold.                                                   |
+
+`--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
+The reported `_time` metric is reduced in the same performance direction by applying `--reduce-op` to `1 / time`
+and then converting the result back to seconds.
 
 #### Metrics
 
