@@ -8,7 +8,7 @@ import io
 import os
 
 from superbench.common.utils import logger
-from superbench.benchmarks import BenchmarkRegistry, ReturnCode
+from superbench.benchmarks import BenchmarkRegistry, Platform, ReturnCode
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
 
 
@@ -253,4 +253,4 @@ class GpuStreamBenchmark(MicroBenchmarkWithInvoke):
         return True
 
 
-BenchmarkRegistry.register_benchmark('gpu-stream', GpuStreamBenchmark)
+BenchmarkRegistry.register_benchmark('gpu-stream', GpuStreamBenchmark, platform=Platform.ROCM)
