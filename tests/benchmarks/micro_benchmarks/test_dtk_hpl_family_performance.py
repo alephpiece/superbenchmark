@@ -3,14 +3,23 @@
 
 """Tests for DTK gpu-hpl benchmark family."""
 
+import os
 import unittest
 
+from tests.helper.testcase import BenchmarkTestCase
 from superbench.benchmarks.micro_benchmarks.dtk_hpl_mxp_performance import DtkHplMxpBenchmark
 from superbench.benchmarks.micro_benchmarks.dtk_hpl_performance import DtkHplBenchmark
 
 
-class DtkHplFamilyBenchmarkTest(unittest.TestCase):
+class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
     """Tests for DTK gpu-hpl and gpu-hpl-mxp benchmarks."""
+    @classmethod
+    def setUpClass(cls):
+        """Hook method for setting up class fixture before running tests in the class."""
+        super().setUpClass()
+        cls.createMockEnvs(cls)
+        cls.createMockFiles(cls, ['bin/run_rochpl', 'bin/run_rochplmxp'])
+
     def _parse_args(self, benchmark):
         """Parse benchmark arguments without running preprocess."""
         benchmark.add_parser_arguments()
@@ -81,6 +90,52 @@ class DtkHplFamilyBenchmarkTest(unittest.TestCase):
 
         self.assertTrue(hpl_ret)
         self.assertFalse(hpl_mxp_ret)
+
+    def test_dtk_hpl_preprocess_generates_dat_file(self):
+        """Test DTK gpu-hpl dat file and command generation."""
+        benchmark = DtkHplBenchmark('gpu-hpl')
+
+        self.assertTrue(benchmark._preprocess())
+
+        dat_file_name = 'HPL-WC10R2R32_TTN8_P1_Q1_N45312_NB384.dat'
+        out_file_name = 'HPL-WC10R2R32_TTN8_P1_Q1_N45312_NB384.out'
+        self.assertEqual(os.path.join(self._tmp_dir, 'bin', dat_file_name), benchmark._dat_path)
+        self.assertEqual(os.path.join(self._tmp_dir, 'bin', out_file_name), benchmark._out_path)
+        self.assertEqual(1, len(benchmark._commands))
+        self.assertIn(f'run_rochpl -P 1 -Q 1 --it 1 -i {dat_file_name}', benchmark._commands[0])
+
+        with open(benchmark._dat_path, 'r') as dat_file:
+            dat_content = dat_file.read()
+
+        self.assertIn(f'{out_file_name} output file name (if any)', dat_content)
+        self.assertIn('45312         Ns', dat_content)
+        self.assertIn('384         NBs', dat_content)
+        self.assertIn('0            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)', dat_content)
+        self.assertIn('2            PFACTs (0=left, 1=Crout, 2=Right)', dat_content)
+        self.assertIn('8            memory alignment in double (> 0)', dat_content)
+
+    def test_dtk_hpl_mxp_preprocess_generates_dat_file(self):
+        """Test DTK gpu-hpl-mxp dat file and command generation."""
+        benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --it 6')
+
+        self.assertTrue(benchmark._preprocess())
+
+        dat_file_name = 'HPL-MxP-WC1_P4_Q1_N8192_NB4096.dat'
+        out_file_name = 'HPL-MxP-WC1_P4_Q1_N8192_NB4096.out'
+        self.assertEqual(os.path.join(self._tmp_dir, 'bin', dat_file_name), benchmark._dat_path)
+        self.assertEqual(os.path.join(self._tmp_dir, 'bin', out_file_name), benchmark._out_path)
+        self.assertEqual(1, len(benchmark._commands))
+        self.assertIn(f'run_rochplmxp -P 4 -Q 1 --it 6 -i {dat_file_name}', benchmark._commands[0])
+
+        with open(benchmark._dat_path, 'r') as dat_file:
+            dat_content = dat_file.read()
+
+        self.assertIn(f'{out_file_name} output file name (if any)', dat_content)
+        self.assertIn('8192         Ns', dat_content)
+        self.assertIn('4096         NBs', dat_content)
+        self.assertIn('4            P', dat_content)
+        self.assertIn('1            Q', dat_content)
+        self.assertIn('1            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)', dat_content)
 
 
 if __name__ == '__main__':

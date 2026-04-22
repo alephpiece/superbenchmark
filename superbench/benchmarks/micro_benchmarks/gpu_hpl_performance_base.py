@@ -3,6 +3,7 @@
 
 """Module of the GPU HPL benchmark base class."""
 
+import os
 from typing import Optional
 
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
@@ -68,6 +69,7 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
     _default_bin_name: Optional[str] = None
     _default_dat_name: Optional[str] = None
     _default_out_name: Optional[str] = None
+    _file_label: Optional[str] = None
     _default_n = 45312
     _default_nb = 384
 
@@ -84,6 +86,9 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
         self._dat_path = None
         self._out_path = None
         self._tv = None
+        self._workload = None
+        self._dat_file_name = None
+        self._out_file_name = None
 
     def add_parser_arguments(self):
         """Add the specified arguments."""
@@ -144,13 +149,6 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
             help='Number of times to run each problem.',
         )
         self._parser.add_argument(
-            '-i',
-            '--input',
-            type=str,
-            required=False,
-            help='Input HPL.dat file used as the template for generated input.',
-        )
-        self._parser.add_argument(
             '--PMAP',
             type=int,
             default=1,
@@ -182,7 +180,35 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
 
     def _preprocess(self):
         """Preprocess/preparation operations before benchmarking."""
-        raise NotImplementedError
+        if not super()._preprocess():
+            return False
+
+        self._tv = self._format_tv()
+        self._workload = self._format_workload()
+        file_prefix = self._format_file_prefix()
+        self._dat_file_name = f'{file_prefix}.dat'
+        self._out_file_name = f'{file_prefix}.out'
+        self._dat_path = os.path.join(self._args.bin_dir, self._dat_file_name)
+        self._out_path = os.path.join(self._args.bin_dir, self._out_file_name)
+
+        with open(self._dat_path, 'w') as dat_file:
+            dat_file.write(self._format_dat_content())
+
+        bin_path = os.path.join(self._args.bin_dir, self._bin_name)
+        command = (
+            f'{bin_path}'
+            f' -P {self._args.P}'
+            f' -Q {self._args.Q}'
+            f' --it {self._args.it}'
+            f' -i {self._dat_file_name}'
+        )
+        if self._args.p is not None:
+            command += f' -p {self._args.p}'
+        if self._args.q is not None:
+            command += f' -q {self._args.q}'
+
+        self._commands = [command]
+        return True
 
     def _process_raw_result(self, cmd_idx, raw_output):
         """Parse HPL stdout and generated output file."""
@@ -195,3 +221,11 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
     def _format_workload(self):
         """Format the metric workload suffix from benchmark input arguments."""
         return f'{self._tv}_P{self._args.P}_Q{self._args.Q}_N{self._args.N}_NB{self._args.NB}'
+
+    def _format_file_prefix(self):
+        """Format generated HPL.dat/HPL.out file prefix."""
+        return f'{self._file_label or self._name}-{self._workload}'
+
+    def _format_dat_content(self):
+        """Format generated HPL.dat content."""
+        raise NotImplementedError

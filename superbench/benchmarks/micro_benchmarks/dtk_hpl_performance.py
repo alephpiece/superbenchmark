@@ -14,6 +14,7 @@ class DtkHplBenchmark(GpuHplBenchmark):
     _default_bin_name = 'run_rochpl'
     _default_dat_name = 'HPL.dat'
     _default_out_name = 'HPL.out'
+    _file_label = 'HPL'
 
     def _add_variant_parser_arguments(self):
         """Add rocHPL-specific arguments."""
@@ -115,6 +116,42 @@ class DtkHplBenchmark(GpuHplBenchmark):
             self._args.U,
             self._args.Equilibration,
             self._args.memory_alignment,
+        )
+
+    def _format_dat_content(self):
+        """Format generated rocHPL input file content."""
+        return (
+            'HPLinpack benchmark input file\n'
+            'Innovative Computing Laboratory, University of Tennessee\n'
+            f'{self._out_file_name} output file name (if any)\n'
+            '0            device out (6=stdout,7=stderr,file)\n'
+            '1            # of problems sizes (N)\n'
+            f'{self._args.N}         Ns\n'
+            '1            # of NBs\n'
+            f'{self._args.NB}         NBs\n'
+            f'{self._args.PMAP}            PMAP process mapping (0=Row-,1=Column-major)\n'
+            '1            # of process grids (P x Q)\n'
+            f'{self._args.P}            Ps\n'
+            f'{self._args.Q}            Qs\n'
+            f'{self._args.threshold}         threshold\n'
+            '1            # of panel fact\n'
+            f'{self._args.PFACT}            PFACTs (0=left, 1=Crout, 2=Right)\n'
+            '1            # of recursive stopping criterium\n'
+            f'{self._args.NBMIN}           NBMINs (>= 1)\n'
+            '1            # of panels in recursion\n'
+            f'{self._args.NDIV}            NDIVs\n'
+            '1            # of recursive panel fact.\n'
+            f'{self._args.RFACT}            RFACTs (0=left, 1=Crout, 2=Right)\n'
+            '1            # of broadcast\n'
+            f'{self._args.BCAST}            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)\n'
+            '1            # of lookahead depth\n'
+            f'{self._args.DEPTH}            DEPTHs (>=0)\n'
+            f'{self._args.SWAP}            SWAP (0=bin-exch,1=long,2=mix)\n'
+            f'{self._args.swapping_threshold}           swapping threshold\n'
+            f'{self._args.L1}            L1 in (0=transposed,1=no-transposed) form\n'
+            f'{self._args.U}            U  in (0=transposed,1=no-transposed) form\n'
+            f'{self._args.Equilibration}            Equilibration (0=no,1=yes)\n'
+            f'{self._args.memory_alignment}            memory alignment in double (> 0)\n'
         )
 
 
