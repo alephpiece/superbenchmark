@@ -22,6 +22,10 @@ class DtkHplMxpBenchmark(GpuHplBenchmark):
         """Format the expected rocHPL-MxP T/V field from input arguments."""
         return format_hpl_mxp_tv(self._args.PMAP, self._args.BCAST)
 
+    def _match_output_n(self):
+        """Return whether parsed rocHPL-MxP output N must match the input N."""
+        return False
+
     def _format_dat_content(self):
         """Format generated rocHPL-MxP input file content."""
         return (

@@ -4,10 +4,23 @@
 """Module of the GPU HPL benchmark base class."""
 
 import os
+import re
+import statistics
 from typing import Optional
 
 from superbench.common.utils import logger
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
+
+_HPL_RESULT_PATTERN = re.compile(
+    r'^\s*(?P<tv>W\S+)\s+'
+    r'(?P<n>\d+)\s+'
+    r'(?P<nb>\d+)\s+'
+    r'(?P<p>\d+)\s+'
+    r'(?P<q>\d+)\s+'
+    r'(?P<time>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s+'
+    r'(?P<flops>[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)\s*$'
+)
+_HPL_RESIDUAL_PATTERN = re.compile(r'\.\.\.\.\.\.\s+(?P<status>PASSED|FAILED)\s*$', re.IGNORECASE)
 
 
 def _format_pmap(pmap):
@@ -235,11 +248,104 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
 
     def _process_raw_result(self, cmd_idx, raw_output):
         """Parse HPL stdout and generated output file."""
-        raise NotImplementedError
+        self._result.add_raw_data('raw_output_' + str(cmd_idx), raw_output, self._args.log_raw_data)
+
+        if self._out_path is None or not os.path.exists(self._out_path):
+            logger.error('HPL output file does not exist - path: {}.'.format(self._out_path))
+            return False
+
+        with open(self._out_path, 'r') as output_file:
+            output = output_file.read()
+        self._result.add_raw_data('hpl_output_' + str(cmd_idx), output, self._args.log_raw_data)
+
+        rows = self._parse_result_rows(output)
+        end = self._args.warmup + self._args.iterations
+        if len(rows) < end:
+            logger.error(
+                'Insufficient HPL result rows - benchmark: {}, expected: {}, found: {}.'.format(
+                    self._name, end, len(rows)
+                )
+            )
+            return False
+
+        measured_rows = rows[self._args.warmup:end]
+        flops, time = self._reduce_rows(measured_rows)
+        tests_pass = 1 if all(row['passed'] for row in measured_rows) else 0
+
+        self._result.add_result(f'{self._workload}_flops', flops)
+        self._result.add_result(f'{self._workload}_time', time)
+        self._result.add_result(f'{self._workload}_tests_pass', tests_pass)
+        return True
+
+    def _parse_result_rows(self, output):
+        """Parse matching HPL result rows from generated output content."""
+        rows = []
+        pending_row = None
+        output_tv = self._format_output_tv()
+
+        for line in output.splitlines():
+            result_match = _HPL_RESULT_PATTERN.match(line)
+            if result_match:
+                pending_row = {
+                    'tv': result_match.group('tv'),
+                    'n': int(result_match.group('n')),
+                    'nb': int(result_match.group('nb')),
+                    'p': int(result_match.group('p')),
+                    'q': int(result_match.group('q')),
+                    'time': float(result_match.group('time')),
+                    'flops': float(result_match.group('flops')),
+                }
+                continue
+
+            residual_match = _HPL_RESIDUAL_PATTERN.search(line)
+            if residual_match and pending_row is not None:
+                if self._is_expected_result_row(pending_row, output_tv):
+                    pending_row['passed'] = residual_match.group('status').upper() == 'PASSED'
+                    rows.append(pending_row)
+                pending_row = None
+
+        return rows
+
+    def _is_expected_result_row(self, row, output_tv):
+        """Return whether a parsed output row matches the current benchmark input."""
+        if row['tv'] != output_tv:
+            return False
+        if row['nb'] != self._args.NB or row['p'] != self._args.P or row['q'] != self._args.Q:
+            return False
+        if self._match_output_n() and row['n'] != self._args.N:
+            return False
+        return True
+
+    def _reduce_rows(self, rows):
+        """Reduce measured rows according to FLOPS-oriented reduce semantics."""
+        reduce_op = self._args.reduce_op
+        if reduce_op == 'max':
+            row = max(rows, key=lambda result_row: result_row['flops'])
+            return row['flops'], row['time']
+        if reduce_op == 'min':
+            row = min(rows, key=lambda result_row: result_row['flops'])
+            return row['flops'], row['time']
+        if reduce_op == 'mean':
+            return (
+                statistics.mean(row['flops'] for row in rows),
+                statistics.mean(row['time'] for row in rows),
+            )
+
+        sorted_rows = sorted(rows, key=lambda result_row: result_row['flops'])
+        row = sorted_rows[len(sorted_rows) // 2]
+        return row['flops'], row['time']
 
     def _format_tv(self):
         """Format the expected T/V field from benchmark input arguments."""
         raise NotImplementedError
+
+    def _format_output_tv(self):
+        """Format the expected T/V field in generated HPL output."""
+        return self._format_tv()
+
+    def _match_output_n(self):
+        """Return whether parsed output N must match the input N."""
+        return True
 
     def _format_workload(self):
         """Format the metric workload suffix from benchmark input arguments."""

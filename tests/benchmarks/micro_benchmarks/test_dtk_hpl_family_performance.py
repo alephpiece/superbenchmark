@@ -28,6 +28,11 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
             benchmark._args = args
         return ret, args
 
+    def _write_output_file(self, benchmark, output):
+        """Write generated HPL output for result parsing tests."""
+        with open(benchmark._out_path, 'w') as output_file:
+            output_file.write(output)
+
     def test_dtk_hpl_default_metric_workload(self):
         """Test DTK gpu-hpl default workload formatting."""
         benchmark = DtkHplBenchmark('gpu-hpl')
@@ -146,6 +151,82 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         self.assertIn('4            P', dat_content)
         self.assertIn('1            Q', dat_content)
         self.assertIn('1            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)', dat_content)
+
+    def test_dtk_hpl_result_parsing_with_warmup_and_max_reduce(self):
+        """Test DTK gpu-hpl parses generated output and reduces by max FLOPS."""
+        benchmark = DtkHplBenchmark(
+            'gpu-hpl', parameters='--P 4 --Q 1 --N 8192 --NB 512 --BCAST 1 --warmup 1 --iterations 3 --reduce-op max'
+        )
+
+        self.assertTrue(benchmark._preprocess())
+        self._write_output_file(
+            benchmark, """
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC11R2R32        8192   512     4     1               0.71              5.167e+02
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0002689 ...... PASSED
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC11R2R32        8192   512     4     1               0.69              5.338e+02
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0002689 ...... PASSED
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC11R2R32        8192   512     4     1               0.67              5.437e+02
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0002689 ...... PASSED
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC11R2R32        8192   512     4     1               0.67              5.450e+02
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0002689 ...... PASSED
+"""
+        )
+
+        self.assertTrue(benchmark._process_raw_result(0, 'stdout noise'))
+
+        workload = 'WC11R2R32_TTN8_P4_Q1_N8192_NB512'
+        self.assertEqual(545.0, benchmark.result[f'{workload}_flops'][0])
+        self.assertEqual(0.67, benchmark.result[f'{workload}_time'][0])
+        self.assertEqual(1, benchmark.result[f'{workload}_tests_pass'][0])
+        self.assertIn('raw_output_0', benchmark.raw_data)
+        self.assertIn('hpl_output_0', benchmark.raw_data)
+
+    def test_dtk_hpl_mxp_result_parsing_does_not_match_output_n(self):
+        """Test DTK gpu-hpl-mxp parses output when output N differs from input N."""
+        benchmark = DtkHplMxpBenchmark(
+            'gpu-hpl-mxp',
+            parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --warmup 1 --iterations 2 --reduce-op min'
+        )
+
+        self.assertTrue(benchmark._preprocess())
+        self._write_output_file(
+            benchmark, """
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC1            16384  4096     4     1               0.78              3.742e+03
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0891789 ...... PASSED
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC1            16384  4096     4     1               0.80              3.665e+03
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0891789 ...... PASSED
+T/V                N    NB     P     Q               Time                 Gflops
+--------------------------------------------------------------------------------
+WC1            16384  4096     4     1               0.78              3.767e+03
+||Ax-b||_oo/(eps*(||A||_oo*||x||_oo+||b||_oo)*N)=        0.0891789 ...... FAILED
+"""
+        )
+
+        self.assertTrue(benchmark._process_raw_result(0, 'stdout noise'))
+
+        workload = 'WC1_P4_Q1_N8192_NB4096'
+        self.assertEqual(3665.0, benchmark.result[f'{workload}_flops'][0])
+        self.assertEqual(0.80, benchmark.result[f'{workload}_time'][0])
+        self.assertEqual(0, benchmark.result[f'{workload}_tests_pass'][0])
+
+    def test_dtk_hpl_result_parsing_fails_when_output_file_is_missing(self):
+        """Test DTK gpu-hpl parsing fails when generated output file is missing."""
+        benchmark = DtkHplBenchmark('gpu-hpl')
+
+        self.assertTrue(benchmark._preprocess())
+        self.assertFalse(benchmark._process_raw_result(0, 'stdout noise'))
 
 
 if __name__ == '__main__':
