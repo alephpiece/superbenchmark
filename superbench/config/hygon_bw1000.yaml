@@ -154,6 +154,187 @@ superbench:
         maxbytes: 16G
         ngpus: 1
         operation: alltoall
+    gpu-hpl:r32:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 8
+          node_num: 4
+          bind_to: none
+          mca:
+            pml: ucx
+            btl: ^openib
+            btl_tcp_if_exclude: lo,docker0
+            coll_hcoll_enable: 0
+          env:
+            ROCM_PATH: /opt/dtk
+            HSA_FORCE_FINE_GRAIN_PCIE: 1
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_RNDV_FRAG_MEM_TYPE: rocm
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 8
+        q: 4
+        n: 512000
+        nb: 512
+        bcast: 5
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r16:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 8
+          node_num: 2
+          bind_to: none
+          mca:
+            pml: ucx
+            btl: ^openib
+            btl_tcp_if_exclude: lo,docker0
+            coll_hcoll_enable: 0
+          env:
+            ROCM_PATH: /opt/dtk
+            HSA_FORCE_FINE_GRAIN_PCIE: 1
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_RNDV_FRAG_MEM_TYPE: rocm
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 8
+        q: 2
+        n: 360448
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r8:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 8
+          node_num: 1
+          bind_to: none
+          env:
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 4
+        q: 2
+        n: 254976
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r4:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 4
+          node_num: 1
+          bind_to: none
+          env:
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 4
+        q: 1
+        n: 180224
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r2:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 2
+          node_num: 1
+          bind_to: none
+          env:
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 2
+        q: 1
+        n: 128000
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r1:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 1
+          node_num: 1
+          bind_to: none
+          env:
+            UCX_RNDV_SCHEME: put_zcopy
+            UCX_MEMTYPE_CACHE: n
+      parameters:
+        p: 1
+        q: 1
+        n: 90624
+        nb: 512
+        nbmin: 16
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r8:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 8
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 4
+        q: 2
+        n: 344064
+        nb: 4096
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r4:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 4
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 4
+        q: 1
+        n: 245760
+        nb: 4096
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r2:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 2
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 2
+        q: 1
+        n: 172032
+        nb: 4096
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r1:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 1
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 1
+        q: 1
+        n: 122880
+        nb: 4096
+        warmup: 1
+        iterations: 5
     gpu-hpcg:r32:
       enable: false
       modes:
