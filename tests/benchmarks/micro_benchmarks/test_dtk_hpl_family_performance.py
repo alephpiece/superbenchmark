@@ -39,6 +39,9 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         self.assertEqual(45312, args.N)
         self.assertEqual(384, args.NB)
         self.assertEqual(0, args.BCAST)
+        self.assertEqual(0, args.warmup)
+        self.assertEqual(1, args.iterations)
+        self.assertEqual('max', args.reduce_op)
 
         benchmark._tv = benchmark._format_tv()
         self.assertEqual('WC10R2R32_TTN8', benchmark._tv)
@@ -91,6 +94,11 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         self.assertTrue(hpl_ret)
         self.assertFalse(hpl_mxp_ret)
 
+    def test_dtk_hpl_invalid_sampling_arguments(self):
+        """Test invalid HPL sampling arguments are rejected."""
+        self.assertFalse(DtkHplBenchmark('gpu-hpl', parameters='--warmup -1')._preprocess())
+        self.assertFalse(DtkHplBenchmark('gpu-hpl', parameters='--iterations 0')._preprocess())
+
     def test_dtk_hpl_preprocess_generates_dat_file(self):
         """Test DTK gpu-hpl dat file and command generation."""
         benchmark = DtkHplBenchmark('gpu-hpl')
@@ -116,7 +124,9 @@ class DtkHplFamilyBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
 
     def test_dtk_hpl_mxp_preprocess_generates_dat_file(self):
         """Test DTK gpu-hpl-mxp dat file and command generation."""
-        benchmark = DtkHplMxpBenchmark('gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --it 6')
+        benchmark = DtkHplMxpBenchmark(
+            'gpu-hpl-mxp', parameters='--P 4 --Q 1 --N 8192 --NB 4096 --BCAST 1 --warmup 1 --iterations 5'
+        )
 
         self.assertTrue(benchmark._preprocess())
 

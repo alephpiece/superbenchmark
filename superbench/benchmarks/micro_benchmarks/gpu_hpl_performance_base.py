@@ -6,6 +6,7 @@
 import os
 from typing import Optional
 
+from superbench.common.utils import logger
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
 
 
@@ -141,12 +142,27 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
             help='Specific panel size: the number of rows/columns in panels.',
         )
         self._parser.add_argument(
-            '-it',
-            '--it',
+            '--warmup',
+            type=int,
+            default=0,
+            required=False,
+            help='Number of warmup runs to exclude from result aggregation.',
+        )
+        self._parser.add_argument(
+            '--iterations',
             type=int,
             default=1,
             required=False,
-            help='Number of times to run each problem.',
+            help='Number of measurement runs to include in result aggregation.',
+        )
+        self._parser.add_argument(
+            '--reduce-op',
+            dest='reduce_op',
+            type=str,
+            default='max',
+            choices=['mean', 'median', 'max', 'min'],
+            required=False,
+            help='Reduce operator for aggregating measurement runs by FLOPS.',
         )
         self._parser.add_argument(
             '--PMAP',
@@ -183,6 +199,13 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
         if not super()._preprocess():
             return False
 
+        if self._args.warmup < 0:
+            logger.error('warmup should be non-negative, while {} is set.'.format(self._args.warmup))
+            return False
+        if self._args.iterations <= 0:
+            logger.error('iterations should be positive, while {} is set.'.format(self._args.iterations))
+            return False
+
         self._tv = self._format_tv()
         self._workload = self._format_workload()
         file_prefix = self._format_file_prefix()
@@ -199,7 +222,7 @@ class GpuHplBenchmark(MicroBenchmarkWithInvoke):
             f'{bin_path}'
             f' -P {self._args.P}'
             f' -Q {self._args.Q}'
-            f' --it {self._args.it}'
+            f' --it {self._args.warmup + self._args.iterations}'
             f' -i {self._dat_file_name}'
         )
         if self._args.p is not None:
