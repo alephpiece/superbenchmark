@@ -189,6 +189,48 @@ Performed by [High-Performance Linpack Benchmark for Distributed-Memory Computer
 | cpu-hpl/throughput | bandwidth (GFlops) | Compute bandwidth.                                                        |
 | cpu-hpl/time       | time (s)           | Time elapsed during HPL run.                                              |
 
+### `gpu-hpl`
+
+#### Introduction
+
+Measure GPU HPL performance for dense linear algebra workloads.
+Performed by [rocHPL](https://github.com/ROCm/rocHPL).
+
+#### Metrics
+
+rocHPL reports performance, time, and correctness metrics.
+The metric key includes the configured HPL variant, process grid, matrix size, and block size:
+`${tv}_P${P}_Q${Q}_N${N}_NB${NB}`.
+The `tv` field is based on the rocHPL `T/V` value and includes an extended suffix for `L1`, `U`,
+`Equilibration`, and `memory-alignment`. For example, `WC11R2R32_TTN8` uses transposed `L1`,
+transposed `U`, no equilibration, and memory alignment `8`.
+
+| Name                                                  | Unit           | Description                                      |
+|-------------------------------------------------------|----------------|--------------------------------------------------|
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_flops`      | FLOPS (GFLOPS) | Throughput for the specified rocHPL run.         |
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_time`       | time (s)       | Time elapsed during the specified HPL run.       |
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_tests_pass` |                | Whether residual checks passed (1: pass, 0: fail). |
+
+### `gpu-hpl-mxp`
+
+#### Introduction
+
+Measure GPU HPL-MxP performance for mixed-precision dense linear algebra workloads.
+Performed by [rocHPL-MxP](https://github.com/ROCm/rocHPL-MxP).
+
+#### Metrics
+
+rocHPL-MxP reports performance, time, and correctness metrics.
+The metric key includes the configured HPL-MxP variant, process grid, matrix size, and block size:
+`${tv}_P${P}_Q${Q}_N${N}_NB${NB}`.
+The `tv` field is based on the rocHPL-MxP `T/V` value, for example `WC1`.
+
+| Name                                                      | Unit           | Description                                      |
+|-----------------------------------------------------------|----------------|--------------------------------------------------|
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_flops`      | FLOPS (GFLOPS) | Throughput for the specified rocHPL-MxP run.     |
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_time`       | time (s)       | Time elapsed during the specified HPL-MxP run.   |
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_tests_pass` |                | Whether residual checks passed (1: pass, 0: fail). |
+
 ### `gpu-hpcg`
 
 #### Introduction
@@ -205,9 +247,9 @@ The metric key includes the configured process domain and local problem size:
 
 | Name                                                                                             | Unit             | Description                                             |
 |--------------------------------------------------------------------------------------------------|------------------|---------------------------------------------------------|
-| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops`                         | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_flops`                          | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
 | `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth`                      | bandwidth (GB/s) | Bandwidth for the specified rocHPCG operation.          |
-| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops_per_process`             | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_flops_per_process`              | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
 | `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth_per_process`          | bandwidth (GB/s) | Per-process bandwidth for the specified operation.      |
 | `gpu-hpcg/setup_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                                  | time (s)         | Setup phase duration.                                   |
 | `gpu-hpcg/optimization_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                           | time (s)         | Optimization phase duration.                            |
