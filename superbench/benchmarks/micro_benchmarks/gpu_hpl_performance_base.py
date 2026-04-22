@@ -23,6 +23,16 @@ def _format_fact(fact):
     return fact_tokens[fact]
 
 
+def _format_transpose(value):
+    """Format HPL transposed/no-transposed token used in the extended T/V field."""
+    return 'T' if value == 0 else 'N'
+
+
+def _format_equilibration(value):
+    """Format HPL equilibration token used in the extended T/V field."""
+    return 'N' if value == 0 else 'Y'
+
+
 def format_hpl_mxp_tv(pmap, bcast):
     """Format the rocHPL-MxP T/V field from input parameters."""
     return f'W{_format_pmap(pmap)}{bcast}'
@@ -38,6 +48,17 @@ def format_hpl_tv(pmap, depth, bcast, rfact, ndiv, pfact, nbmin):
         f'{ndiv}'
         f'{_format_fact(pfact)}'
         f'{nbmin}'
+    )
+
+
+def format_hpl_extended_tv(pmap, depth, bcast, rfact, ndiv, pfact, nbmin, l1, u, equilibration, alignment):
+    """Format the rocHPL T/V field plus SuperBench variant suffix from input parameters."""
+    return (
+        f'{format_hpl_tv(pmap, depth, bcast, rfact, ndiv, pfact, nbmin)}'
+        f'_{_format_transpose(l1)}'
+        f'{_format_transpose(u)}'
+        f'{_format_equilibration(equilibration)}'
+        f'{alignment}'
     )
 
 

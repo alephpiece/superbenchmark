@@ -32,8 +32,8 @@ class DtkHplFamilyBenchmarkTest(unittest.TestCase):
         self.assertEqual(0, args.BCAST)
 
         benchmark._tv = benchmark._format_tv()
-        self.assertEqual('WC10R2R32', benchmark._tv)
-        self.assertEqual('WC10R2R32_P1_Q1_N45312_NB384', benchmark._format_workload())
+        self.assertEqual('WC10R2R32_TTN8', benchmark._tv)
+        self.assertEqual('WC10R2R32_TTN8_P1_Q1_N45312_NB384', benchmark._format_workload())
 
     def test_dtk_hpl_mxp_default_metric_workload(self):
         """Test DTK gpu-hpl-mxp default workload formatting."""
@@ -58,8 +58,8 @@ class DtkHplFamilyBenchmarkTest(unittest.TestCase):
 
         self.assertTrue(ret)
         benchmark._tv = benchmark._format_tv()
-        self.assertEqual('WC11R2R32', benchmark._tv)
-        self.assertEqual('WC11R2R32_P4_Q1_N8192_NB512', benchmark._format_workload())
+        self.assertEqual('WC11R2R32_TTN8', benchmark._tv)
+        self.assertEqual('WC11R2R32_TTN8_P4_Q1_N8192_NB512', benchmark._format_workload())
 
     def test_dtk_hpl_mxp_sample_metric_workload(self):
         """Test DTK gpu-hpl-mxp workload formatting with sample parameters."""

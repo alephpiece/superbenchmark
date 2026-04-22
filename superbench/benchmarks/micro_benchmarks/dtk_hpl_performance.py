@@ -5,7 +5,7 @@
 
 from superbench.benchmarks import BenchmarkRegistry, Platform
 from superbench.benchmarks.micro_benchmarks import GpuHplBenchmark
-from superbench.benchmarks.micro_benchmarks.gpu_hpl_performance_base import format_hpl_tv
+from superbench.benchmarks.micro_benchmarks.gpu_hpl_performance_base import format_hpl_extended_tv
 
 
 class DtkHplBenchmark(GpuHplBenchmark):
@@ -103,7 +103,7 @@ class DtkHplBenchmark(GpuHplBenchmark):
 
     def _format_tv(self):
         """Format the expected rocHPL T/V field from input arguments."""
-        return format_hpl_tv(
+        return format_hpl_extended_tv(
             self._args.PMAP,
             self._args.DEPTH,
             self._args.BCAST,
@@ -111,6 +111,10 @@ class DtkHplBenchmark(GpuHplBenchmark):
             self._args.NDIV,
             self._args.PFACT,
             self._args.NBMIN,
+            self._args.L1,
+            self._args.U,
+            self._args.Equilibration,
+            self._args.memory_alignment,
         )
 
 
