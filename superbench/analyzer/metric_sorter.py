@@ -16,7 +16,7 @@ _HPCG_WORKLOAD_PATTERN = re.compile(
     r'^(?P<subject>final|ddot|waxpby|spmv|mg|total)_'
     r'p(?P<npx>\d+)x(?P<npy>\d+)x(?P<npz>\d+)_'
     r'n(?P<nx>\d+)x(?P<ny>\d+)x(?P<nz>\d+)_'
-    r'(?P<type>gflops|bandwidth|gflops_per_process|bandwidth_per_process)$'
+    r'(?P<type>flops|bandwidth|flops_per_process|bandwidth_per_process)$'
 )
 _HPCG_TIME_PATTERN = re.compile(
     r'^(?P<subject>setup_time|optimization_time|total_time)_'
@@ -37,9 +37,9 @@ _HPCG_SUBJECT_ORDER = {
 }
 
 _HPCG_PERF_TYPE_ORDER = {
-    'gflops': 0,
+    'flops': 0,
     'bandwidth': 1,
-    'gflops_per_process': 2,
+    'flops_per_process': 2,
     'bandwidth_per_process': 3,
 }
 

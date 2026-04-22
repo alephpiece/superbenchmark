@@ -91,39 +91,39 @@ superbench:
       categories: HPCG gpu-hpcg:r1
       metrics:
         - gpu-hpcg:r1/(setup_time|optimization_time|total_time)_p1x1x1_n560x280x280
-        - gpu-hpcg:r1/(ddot|waxpby|spmv|mg|total|final)_p1x1x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r1/(ddot|waxpby|spmv|mg|total|final)_p1x1x1_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
 
     gpu_hpcg_r2:
       statistics: mean
       categories: HPCG gpu-hpcg:r2
       metrics:
         - gpu-hpcg:r2/(setup_time|optimization_time|total_time)_p2x1x1_n560x280x280
-        - gpu-hpcg:r2/(ddot|waxpby|spmv|mg|total|final)_p2x1x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r2/(ddot|waxpby|spmv|mg|total|final)_p2x1x1_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
 
     gpu_hpcg_r4:
       statistics: mean
       categories: HPCG gpu-hpcg:r4
       metrics:
         - gpu-hpcg:r4/(setup_time|optimization_time|total_time)_p2x2x1_n560x280x280
-        - gpu-hpcg:r4/(ddot|waxpby|spmv|mg|total|final)_p2x2x1_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r4/(ddot|waxpby|spmv|mg|total|final)_p2x2x1_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
 
     gpu_hpcg_r8:
       statistics: mean
       categories: HPCG gpu-hpcg:r8
       metrics:
         - gpu-hpcg:r8/(setup_time|optimization_time|total_time)_p2x2x2_n560x280x280
-        - gpu-hpcg:r8/(ddot|waxpby|spmv|mg|total|final)_p2x2x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r8/(ddot|waxpby|spmv|mg|total|final)_p2x2x2_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
 
     gpu_hpcg_r16:
       statistics: mean
       categories: HPCG gpu-hpcg:r16
       metrics:
         - gpu-hpcg:r16/(setup_time|optimization_time|total_time)_p4x2x2_n560x280x280
-        - gpu-hpcg:r16/(ddot|waxpby|spmv|mg|total|final)_p4x2x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r16/(ddot|waxpby|spmv|mg|total|final)_p4x2x2_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
 
     gpu_hpcg_r32:
       statistics: mean
       categories: HPCG gpu-hpcg:r32
       metrics:
         - gpu-hpcg:r32/(setup_time|optimization_time|total_time)_p4x4x2_n560x280x280
-        - gpu-hpcg:r32/(ddot|waxpby|spmv|mg|total|final)_p4x4x2_n560x280x280_(gflops_per_process|bandwidth_per_process|gflops|bandwidth)
+        - gpu-hpcg:r32/(ddot|waxpby|spmv|mg|total|final)_p4x4x2_n560x280x280_(flops_per_process|bandwidth_per_process|flops|bandwidth)
