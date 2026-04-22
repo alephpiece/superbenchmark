@@ -196,6 +196,37 @@ Performed by [High-Performance Linpack Benchmark for Distributed-Memory Computer
 Measure GPU HPL performance for dense linear algebra workloads.
 Performed by [rocHPL](https://github.com/ROCm/rocHPL).
 
+#### Parameters
+
+`gpu-hpl` always generates an HPL input `.dat` file from the command-line parameters.
+The generated file name and output file name are derived from the same workload prefix used in metric keys.
+
+| Parameter              | Default | Description                                                                 |
+|------------------------|---------|-----------------------------------------------------------------------------|
+| `--P`                  | `1`     | Number of rows in the MPI process grid.                                     |
+| `--Q`                  | `1`     | Number of columns in the MPI process grid.                                  |
+| `--p`                  |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--q`                  |         | Optional number of columns in the node-local MPI process grid.              |
+| `--N`                  | `45312` | Global matrix size.                                                         |
+| `--NB`                 | `384`   | Panel/block size.                                                           |
+| `--warmup`             | `0`     | Number of warmup HPL runs to exclude from result aggregation.               |
+| `--iterations`         | `1`     | Number of measured HPL runs to include in result aggregation.               |
+| `--reduce-op`          | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
+| `--PMAP`               | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--BCAST`              | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--threshold`          | `16.0`  | Residual check threshold.                                                   |
+| `--PFACT`              | `2`     | Panel factorization: `0` for left, `1` for Crout, `2` for right.            |
+| `--NBMIN`              | `32`    | Recursive stopping criterion.                                               |
+| `--NDIV`               | `2`     | Number of panels in recursion.                                              |
+| `--RFACT`              | `2`     | Recursive panel factorization: `0` for left, `1` for Crout, `2` for right.  |
+| `--DEPTH`              | `1`     | Lookahead depth.                                                            |
+| `--SWAP`               | `1`     | Swapping algorithm: `0` for binary exchange, `1` for long, `2` for mix.     |
+| `--swapping-threshold` | `64`    | Swapping threshold.                                                         |
+| `--L1`                 | `0`     | L1 storage form: `0` for transposed, `1` for non-transposed.                |
+| `--U`                  | `0`     | U storage form: `0` for transposed, `1` for non-transposed.                 |
+| `--Equilibration`      | `0`     | Equilibration: `0` for no, `1` for yes.                                     |
+| `--memory-alignment`   | `8`     | Memory alignment in doubles.                                                |
+
 #### Metrics
 
 rocHPL reports performance, time, and correctness metrics.
@@ -218,6 +249,26 @@ transposed `U`, no equilibration, and memory alignment `8`.
 Measure GPU HPL-MxP performance for mixed-precision dense linear algebra workloads.
 Performed by [rocHPL-MxP](https://github.com/ROCm/rocHPL-MxP).
 
+#### Parameters
+
+`gpu-hpl-mxp` always generates an HPL-MxP input `.dat` file from the command-line parameters.
+The generated file name and output file name are derived from the same workload prefix used in metric keys.
+
+| Parameter      | Default | Description                                                                 |
+|----------------|---------|-----------------------------------------------------------------------------|
+| `--P`          | `1`     | Number of rows in the MPI process grid.                                     |
+| `--Q`          | `1`     | Number of columns in the MPI process grid.                                  |
+| `--p`          |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--q`          |         | Optional number of columns in the node-local MPI process grid.              |
+| `--N`          | `61440` | Global matrix size.                                                         |
+| `--NB`         | `2560`  | Panel/block size.                                                           |
+| `--warmup`     | `0`     | Number of warmup HPL-MxP runs to exclude from result aggregation.           |
+| `--iterations` | `1`     | Number of measured HPL-MxP runs to include in result aggregation.           |
+| `--reduce-op`  | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
+| `--PMAP`       | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--BCAST`      | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--threshold`  | `16.0`  | Residual check threshold.                                                   |
+
 #### Metrics
 
 rocHPL-MxP reports performance, time, and correctness metrics.
@@ -237,6 +288,22 @@ The `tv` field is based on the rocHPL-MxP `T/V` value, for example `WC1`.
 
 Measure GPU HPCG performance for sparse linear algebra and multigrid-style workloads.
 Performed by [rocHPCG](https://github.com/ROCm/rocHPCG).
+
+#### Parameters
+
+| Parameter | Default | Description                                                                 |
+|-----------|---------|-----------------------------------------------------------------------------|
+| `--npx`   | `1`     | Number of MPI processes in the x dimension.                                 |
+| `--npy`   | `1`     | Number of MPI processes in the y dimension.                                 |
+| `--npz`   | `1`     | Number of MPI processes in the z dimension.                                 |
+| `--nx`    | `560`   | Local problem size in the x dimension.                                      |
+| `--ny`    | `280`   | Local problem size in the y dimension.                                      |
+| `--nz`    | `280`   | Local problem size in the z dimension.                                      |
+| `--rt`    | `60`    | Benchmark runtime in seconds.                                               |
+| `--tol`   | `1.0`   | Verification control: `0` runs reference verification; non-zero skips it.   |
+| `--pz`    | `0`     | Partition boundary in the z process dimension.                              |
+| `--zl`    | `--nz`  | Local `nz` value for processes with z rank lower than `--pz`.               |
+| `--zu`    | `--nz`  | Local `nz` value for processes with z rank greater than or equal to `--pz`. |
 
 #### Metrics
 
