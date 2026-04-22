@@ -210,7 +210,7 @@ ifneq (,$(wildcard rocHPL/install.sh))
 	./install.sh --with-rocm=$(ROCM_PATH) \
 		--with-rocblas=$(ROCM_PATH)/rocblas \
 		--with-mpi=$(MPI_HOME) \
-		--arch=gfx936,gfx938
+		--arch=$$(paste -sd ',' $(ROCM_PATH)/bin/target.lst)
 	cp -v ./rocHPL/build/bin/rochpl $(SB_MICRO_PATH)/bin/
 	cp -v ./rocHPL/build/HPL.dat $(SB_MICRO_PATH)/bin/
 	cp -v ./run_rochpl.sh $(SB_MICRO_PATH)/bin/run_rochpl
@@ -226,7 +226,7 @@ ifneq (,$(wildcard rocHPL-MxP/install.sh))
 		--with-rocblas=$(ROCM_PATH)/rocblas \
 		--with-rocsolver=$(ROCM_PATH)/rocsolver \
 		--with-mpi=$(MPI_HOME) \
-		--arch=gfx936,gfx938
+		--arch=$$(paste -sd ',' $(ROCM_PATH)/bin/target.lst)
 	cp -v ./rocHPL-MxP/build/bin/rochplmxp $(SB_MICRO_PATH)/bin/
 	cp -v ./rocHPL-MxP/build/HPL-MxP.dat $(SB_MICRO_PATH)/bin/
 	cp -v ./run_rochplmxp.sh $(SB_MICRO_PATH)/bin/run_rochplmxp
