@@ -189,12 +189,129 @@ Performed by [High-Performance Linpack Benchmark for Distributed-Memory Computer
 | cpu-hpl/throughput | bandwidth (GFlops) | Compute bandwidth.                                                        |
 | cpu-hpl/time       | time (s)           | Time elapsed during HPL run.                                              |
 
+### `gpu-hpl`
+
+#### Introduction
+
+Measure GPU HPL performance for dense linear algebra workloads.
+Performed by [rocHPL](https://github.com/ROCm/rocHPL).
+
+#### Parameters
+
+`gpu-hpl` always generates an HPL input `.dat` file from the command-line parameters.
+The generated file name and output file name are derived from the same workload prefix used in metric keys.
+
+| Parameter              | Default | Description                                                                 |
+|------------------------|---------|-----------------------------------------------------------------------------|
+| `--p`                  | `1`     | Number of rows in the MPI process grid.                                     |
+| `--q`                  | `1`     | Number of columns in the MPI process grid.                                  |
+| `--local-p`            |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--local-q`            |         | Optional number of columns in the node-local MPI process grid.              |
+| `--n`                  | `45312` | Global matrix size.                                                         |
+| `--nb`                 | `384`   | Panel/block size.                                                           |
+| `--warmup`             | `0`     | Number of warmup HPL runs to exclude from result aggregation.               |
+| `--iterations`         | `1`     | Number of measured HPL runs to include in result aggregation.               |
+| `--reduce-op`          | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
+| `--pmap`               | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--bcast`              | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--threshold`          | `16.0`  | Residual check threshold.                                                   |
+| `--pfact`              | `2`     | Panel factorization: `0` for left, `1` for Crout, `2` for right.            |
+| `--nbmin`              | `32`    | Recursive stopping criterion.                                               |
+| `--ndiv`               | `2`     | Number of panels in recursion.                                              |
+| `--rfact`              | `2`     | Recursive panel factorization: `0` for left, `1` for Crout, `2` for right.  |
+| `--depth`              | `1`     | Lookahead depth.                                                            |
+| `--swap`               | `1`     | Swapping algorithm: `0` for binary exchange, `1` for long, `2` for mix.     |
+| `--swapping-threshold` | `64`    | Swapping threshold.                                                         |
+| `--l1`                 | `0`     | L1 storage form: `0` for transposed, `1` for non-transposed.                |
+| `--u`                  | `0`     | U storage form: `0` for transposed, `1` for non-transposed.                 |
+| `--equilibration`      | `0`     | Equilibration: `0` for no, `1` for yes.                                     |
+| `--memory-alignment`   | `8`     | Memory alignment in doubles.                                                |
+
+`--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
+The reported `_time` metric is reduced in the same performance direction by applying `--reduce-op` to `1 / time`
+and then converting the result back to seconds.
+
+#### Metrics
+
+rocHPL reports performance, time, and correctness metrics.
+The metric key includes the configured HPL variant, process grid, matrix size, and block size:
+`${tv}_P${P}_Q${Q}_N${N}_NB${NB}`.
+The `tv` field is based on the rocHPL `T/V` value and includes an extended suffix for `L1`, `U`,
+`Equilibration`, and `memory-alignment`. For example, `WC11R2R32_TTN8` uses transposed `L1`,
+transposed `U`, no equilibration, and memory alignment `8`.
+
+| Name                                                  | Unit           | Description                                      |
+|-------------------------------------------------------|----------------|--------------------------------------------------|
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_flops`      | FLOPS (GFLOPS) | Throughput for the specified rocHPL run.         |
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_time`       | time (s)       | Time elapsed during the specified HPL run.       |
+| `gpu-hpl/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_tests_pass` |                | Whether residual checks passed (1: pass, 0: fail). |
+
+### `gpu-hpl-mxp`
+
+#### Introduction
+
+Measure GPU HPL-MxP performance for mixed-precision dense linear algebra workloads.
+Performed by [rocHPL-MxP](https://github.com/ROCm/rocHPL-MxP).
+
+#### Parameters
+
+`gpu-hpl-mxp` always generates an HPL-MxP input `.dat` file from the command-line parameters.
+The generated file name and output file name are derived from the same workload prefix used in metric keys.
+
+| Parameter      | Default | Description                                                                 |
+|----------------|---------|-----------------------------------------------------------------------------|
+| `--p`          | `1`     | Number of rows in the MPI process grid.                                     |
+| `--q`          | `1`     | Number of columns in the MPI process grid.                                  |
+| `--local-p`    |         | Optional number of rows in the node-local MPI process grid.                 |
+| `--local-q`    |         | Optional number of columns in the node-local MPI process grid.              |
+| `--n`          | `61440` | Global matrix size.                                                         |
+| `--nb`         | `2560`  | Panel/block size.                                                           |
+| `--warmup`     | `0`     | Number of warmup HPL-MxP runs to exclude from result aggregation.           |
+| `--iterations` | `1`     | Number of measured HPL-MxP runs to include in result aggregation.           |
+| `--reduce-op`  | `max`   | Reduce operator for measured runs by FLOPS: `mean`, `median`, `max`, `min`. |
+| `--pmap`       | `1`     | Process mapping: `0` for row-major, `1` for column-major.                   |
+| `--bcast`      | `0`     | Broadcast topology: `0` for 1rg, `1` for 1rM, `2` for 2rg, `3` for 2rM, `4` for Lng, `5` for LnM. |
+| `--threshold`  | `16.0`  | Residual check threshold.                                                   |
+
+`--warmup` runs are excluded from result aggregation. `--reduce-op` is applied to the measured FLOPS values.
+The reported `_time` metric is reduced in the same performance direction by applying `--reduce-op` to `1 / time`
+and then converting the result back to seconds.
+
+#### Metrics
+
+rocHPL-MxP reports performance, time, and correctness metrics.
+The metric key includes the configured HPL-MxP variant, process grid, matrix size, and block size:
+`${tv}_P${P}_Q${Q}_N${N}_NB${NB}`.
+The `tv` field is based on the rocHPL-MxP `T/V` value, for example `WC1`.
+
+| Name                                                      | Unit           | Description                                      |
+|-----------------------------------------------------------|----------------|--------------------------------------------------|
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_flops`      | FLOPS (GFLOPS) | Throughput for the specified rocHPL-MxP run.     |
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_time`       | time (s)       | Time elapsed during the specified HPL-MxP run.   |
+| `gpu-hpl-mxp/${tv}_P${P}_Q${Q}_N${N}_NB${NB}_tests_pass` |                | Whether residual checks passed (1: pass, 0: fail). |
+
 ### `gpu-hpcg`
 
 #### Introduction
 
 Measure GPU HPCG performance for sparse linear algebra and multigrid-style workloads.
 Performed by [rocHPCG](https://github.com/ROCm/rocHPCG).
+
+#### Parameters
+
+| Parameter | Default | Description                                                                 |
+|-----------|---------|-----------------------------------------------------------------------------|
+| `--npx`   | `1`     | Number of MPI processes in the x dimension.                                 |
+| `--npy`   | `1`     | Number of MPI processes in the y dimension.                                 |
+| `--npz`   | `1`     | Number of MPI processes in the z dimension.                                 |
+| `--nx`    | `560`   | Local problem size in the x dimension.                                      |
+| `--ny`    | `280`   | Local problem size in the y dimension.                                      |
+| `--nz`    | `280`   | Local problem size in the z dimension.                                      |
+| `--rt`    | `60`    | Benchmark runtime in seconds.                                               |
+| `--tol`   | `1.0`   | Verification control: `0` runs reference verification; non-zero skips it.   |
+| `--pz`    | `0`     | Partition boundary in the z process dimension.                              |
+| `--zl`    | `--nz`  | Local `nz` value for processes with z rank lower than `--pz`.               |
+| `--zu`    | `--nz`  | Local `nz` value for processes with z rank greater than or equal to `--pz`. |
 
 #### Metrics
 
@@ -205,9 +322,9 @@ The metric key includes the configured process domain and local problem size:
 
 | Name                                                                                             | Unit             | Description                                             |
 |--------------------------------------------------------------------------------------------------|------------------|---------------------------------------------------------|
-| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops`                         | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_flops`                          | FLOPS (GFLOPS)   | Throughput for the specified rocHPCG operation.         |
 | `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth`                      | bandwidth (GB/s) | Bandwidth for the specified rocHPCG operation.          |
-| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_gflops_per_process`             | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
+| `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_flops_per_process`              | FLOPS (GFLOPS)   | Per-process throughput for the specified operation.     |
 | `gpu-hpcg/${operation}_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}_bandwidth_per_process`          | bandwidth (GB/s) | Per-process bandwidth for the specified operation.      |
 | `gpu-hpcg/setup_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                                  | time (s)         | Setup phase duration.                                   |
 | `gpu-hpcg/optimization_time_p${npx}x${npy}x${npz}_n${nx}x${ny}x${nz}`                           | time (s)         | Optimization phase duration.                            |

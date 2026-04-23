@@ -160,48 +160,127 @@ superbench:
         maxbytes: 16G
         ngpus: 1
         operation: alltoall
-    gpu-hpcg:r32:
+    gpu-hpl:r8:
       enable: false
       modes:
         - name: mpi
           proc_num: 8
-          node_num: 4
-          host_list: [node01, node02, node03, node04]
+          node_num: 1
           bind_to: none
-          mca:
-            pml: ob1
-            btl: ^openib
-            btl_tcp_if_include: p14p2
-            coll_hcoll_enable: 0
       parameters:
-        nx: 560
-        ny: 280
-        nz: 280
-        rt: 10
-        npx: 4
-        npy: 4
-        npz: 2
-    gpu-hpcg:r16:
+        p: 4
+        q: 2
+        n: 256000
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r4:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 4
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 4
+        q: 1
+        n: 180224
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r2:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 2
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 2
+        q: 1
+        n: 128000
+        nb: 512
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl:r1:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 1
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 1
+        q: 1
+        n: 90624
+        nb: 512
+        bcast: 1
+        nbmin: 16
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r8:
       enable: false
       modes:
         - name: mpi
           proc_num: 8
-          node_num: 2
-          host_list: [node01, node02]
+          node_num: 1
           bind_to: none
-          mca:
-            pml: ob1
-            btl: ^openib
-            btl_tcp_if_include: p14p2
-            coll_hcoll_enable: 0
       parameters:
-        nx: 560
-        ny: 280
-        nz: 280
-        rt: 10
-        npx: 4
-        npy: 2
-        npz: 2
+        p: 4
+        q: 2
+        n: 344064
+        nb: 4096
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r4:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 4
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 4
+        q: 1
+        n: 245760
+        nb: 4096
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r2:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 2
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 2
+        q: 1
+        n: 172032
+        nb: 4096
+        bcast: 1
+        warmup: 1
+        iterations: 5
+    gpu-hpl-mxp:r1:
+      enable: false
+      modes:
+        - name: mpi
+          proc_num: 1
+          node_num: 1
+          bind_to: none
+      parameters:
+        p: 1
+        q: 1
+        n: 122880
+        nb: 4096
+        bcast: 1
+        warmup: 1
+        iterations: 5
     gpu-hpcg:r8:
       enable: false
       modes:

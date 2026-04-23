@@ -169,29 +169,29 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
 
         parsed_results = {}
         required_metrics = {
-            'final_gflops',
+            'final_flops',
             'final_bandwidth',
-            'final_gflops_per_process',
+            'final_flops_per_process',
             'final_bandwidth_per_process',
-            'ddot_gflops',
+            'ddot_flops',
             'ddot_bandwidth',
-            'ddot_gflops_per_process',
+            'ddot_flops_per_process',
             'ddot_bandwidth_per_process',
-            'waxpby_gflops',
+            'waxpby_flops',
             'waxpby_bandwidth',
-            'waxpby_gflops_per_process',
+            'waxpby_flops_per_process',
             'waxpby_bandwidth_per_process',
-            'spmv_gflops',
+            'spmv_flops',
             'spmv_bandwidth',
-            'spmv_gflops_per_process',
+            'spmv_flops_per_process',
             'spmv_bandwidth_per_process',
-            'mg_gflops',
+            'mg_flops',
             'mg_bandwidth',
-            'mg_gflops_per_process',
+            'mg_flops_per_process',
             'mg_bandwidth_per_process',
-            'total_gflops',
+            'total_flops',
             'total_bandwidth',
-            'total_gflops_per_process',
+            'total_flops_per_process',
             'total_bandwidth_per_process',
             'setup_time',
             'optimization_time',
@@ -228,9 +228,9 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
     def _format_metric_name(self, metric):
         """Format a rocHPCG metric with the configured process domain and local problem size."""
         metric_suffixes = (
-            'gflops_per_process',
+            'flops_per_process',
             'bandwidth_per_process',
-            'gflops',
+            'flops',
             'bandwidth',
         )
         workload = (
@@ -268,8 +268,8 @@ class GpuHpcgBenchmark(MicroBenchmarkWithInvoke):
         if len(gflops_values) < 2 or len(bandwidth_values) < 2:
             return False
 
-        parsed_results[f'{prefix}_gflops'] = gflops_values[0]
-        parsed_results[f'{prefix}_gflops_per_process'] = gflops_values[1]
+        parsed_results[f'{prefix}_flops'] = gflops_values[0]
+        parsed_results[f'{prefix}_flops_per_process'] = gflops_values[1]
         parsed_results[f'{prefix}_bandwidth'] = bandwidth_values[0]
         parsed_results[f'{prefix}_bandwidth_per_process'] = bandwidth_values[1]
         return True

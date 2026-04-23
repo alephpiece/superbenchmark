@@ -7,6 +7,7 @@ from superbench.benchmarks.micro_benchmarks.micro_base import MicroBenchmark, Mi
 from superbench.benchmarks.micro_benchmarks.gemm_flops_performance_base import GemmFlopsBenchmark
 from superbench.benchmarks.micro_benchmarks.memory_bw_performance_base import MemBwBenchmark
 from superbench.benchmarks.micro_benchmarks.gpu_hpcg_performance_base import GpuHpcgBenchmark
+from superbench.benchmarks.micro_benchmarks.gpu_hpl_performance_base import GpuHplBenchmark
 
 from superbench.benchmarks.micro_benchmarks.computation_communication_overlap import ComputationCommunicationOverlap
 from superbench.benchmarks.micro_benchmarks.cublas_function import CublasBenchmark
@@ -17,6 +18,8 @@ from superbench.benchmarks.micro_benchmarks.dtk_hipblaslt_function import DtkHip
 from superbench.benchmarks.micro_benchmarks.dtk_memory_bw_performance import DtkMemBwBenchmark
 from superbench.benchmarks.micro_benchmarks.dtk_gemm_flops_performance import DtkGemmFlopsBenchmark
 from superbench.benchmarks.micro_benchmarks.dtk_hpcg_performance import DtkHpcgBenchmark
+from superbench.benchmarks.micro_benchmarks.dtk_hpl_performance import DtkHplBenchmark
+from superbench.benchmarks.micro_benchmarks.dtk_hpl_mxp_performance import DtkHplMxpBenchmark
 from superbench.benchmarks.micro_benchmarks.cuda_gemm_flops_performance import CudaGemmFlopsBenchmark
 from superbench.benchmarks.micro_benchmarks.cuda_memory_bw_performance import CudaMemBwBenchmark
 from superbench.benchmarks.micro_benchmarks.cuda_nccl_bw_performance import CudaNcclBwBenchmark
@@ -60,6 +63,8 @@ __all__ = [
     'DiskBenchmark',
     'DistInference',
     'DtkGemmFlopsBenchmark',
+    'DtkHplBenchmark',
+    'DtkHplMxpBenchmark',
     'RocmHipBlasLtBenchmark',
     'DtkHipBlasLtBenchmark',
     'DtkMemBwBenchmark',
@@ -68,6 +73,7 @@ __all__ = [
     'GpuBurnBenchmark',
     'GpuCopyBwBenchmark',
     'GpuHpcgBenchmark',
+    'GpuHplBenchmark',
     'GpuStreamBenchmark',
     'IBBenchmark',
     'IBLoopbackBenchmark',

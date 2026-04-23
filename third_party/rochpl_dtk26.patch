@@ -1,0 +1,213 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6b80b24..30d3c9d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -83,7 +83,7 @@ foreach(i ${rochpl_device_source})
+ endforeach()
+ 
+ # HIP flags workaround while target_compile_options does not work
+-list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -Wno-deprecated-declarations -fPIE -fopenmp")
++list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -Wno-deprecated-declarations -fPIE -fopenmp --gpu-max-threads-per-block=1024")
+ list(APPEND CMAKE_HOST_FLAGS "-Wno-deprecated-declarations")
+ 
+ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+@@ -95,24 +95,35 @@ else()
+ endif()
+ 
+ # GPU arch targets
+-set(TARGETS "gfx900;gfx906")
+-if(HIP_VERSION VERSION_GREATER_EQUAL "3.7")
+-  set(TARGETS "${TARGETS};gfx908")
+-endif()
+-if(HIP_VERSION VERSION_GREATER_EQUAL "4.3")
+-  set(TARGETS "${TARGETS};gfx90a")
+-endif()
+-if (HIP_VERSION VERSION_GREATER_EQUAL "5.7")
+-  set(TARGETS "${TARGETS};gfx942")
+-endif()
+-if (HIP_VERSION VERSION_GREATER_EQUAL "6.5")
+-  set(TARGETS "${TARGETS};gfx950;gfx1100")
++set(ARCHS "")
++if(DEFINED HPL_BUILD_ARCH AND NOT HPL_BUILD_ARCH STREQUAL "")
++  string(REPLACE "," ";" ARCHS "${HPL_BUILD_ARCH}")
++  list(TRANSFORM ARCHS STRIP)
++  list(REMOVE_DUPLICATES ARCHS)
++  message(STATUS "Using manually specified GPU targets: ${ARCHS}")
++else()
++  message(STATUS "Detecting available architecture")
++  find_program(ROCMINFO_EXECUTABLE rocminfo)
++  if(ROCMINFO_EXECUTABLE)
++    execute_process(
++      COMMAND ${ROCMINFO_EXECUTABLE}
++      OUTPUT_VARIABLE ROCMINFO_OUTPUT
++      ERROR_QUIET
++      OUTPUT_STRIP_TRAILING_WHITESPACE)
++
++    string(REGEX MATCHALL "Name:[ \t]+gfx[0-9a-z]+" ARCH_MATCHES "${ROCMINFO_OUTPUT}")
++    string(REGEX REPLACE "Name:[ \t]+" "" ARCHS "${ARCH_MATCHES}")
++    list(REMOVE_DUPLICATES ARCHS)
++  endif()
+ endif()
+-if (HIP_VERSION VERSION_GREATER_EQUAL "7.0")
+-  set(TARGETS "${TARGETS};gfx1201")
++
++if(ARCHS STREQUAL "")
++  message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use ./install.sh --arch=gfxXXX")
+ endif()
+ 
+-foreach(target ${TARGETS})
++message(STATUS "Building for GPU architecture: ${ARCHS}")
++
++foreach(target ${ARCHS})
+   list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
+ endforeach()
+ 
+@@ -176,7 +187,7 @@ if(MPI_GTL)
+   target_link_libraries(rochpl PRIVATE "${GTL_LIB}")
+ endif()
+ 
+-set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
++set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${ARCHS}")
+ 
+ # Configure a header file to pass the rocHPL version
+ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/hpl_version.hpp.in"
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 6d6be5d..ed4813a 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -101,7 +101,7 @@ if(NOT ROCM_FOUND)
+   execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}.zip
+                   WORKING_DIRECTORY ${PROJECT_EXTERN_DIR})
+ 
+-  find_package(ROCmCMakeBuildTools REQUIRED CONFIG PATHS ${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag})
++  set(CMAKE_MODULE_PATH "${PROJECT_EXTERN_DIR}/rocm-cmake-${rocm_cmake_tag}/share/rocm/cmake;${CMAKE_MODULE_PATH}")
+ endif()
+ 
+ include(ROCMSetupVersion)
+diff --git a/install.sh b/install.sh
+index b30a3fb..75900d8 100755
+--- a/install.sh
++++ b/install.sh
+@@ -2,7 +2,7 @@
+ # Author: Nico Trost
+ # Modified by: Noel Chalmers
+ 
+-#set -x #echo on
++# set -euo pipefail
+ 
+ # #################################################
+ # helper functions
+@@ -17,6 +17,7 @@ function display_help()
+   echo "    [--with-rocm=<dir>] Path to ROCm install (Default: /opt/rocm)"
+   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
+   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
++  echo "    [--arch=<archs>] Specify comma separated architecture list to build (Default: detect from rocminfo)"
+   echo "    [--with-mpi-gtl=<dir>] Path to external MPI-GTL install (Optional: defaults to no gtl support)"
+   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
+   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
+@@ -33,10 +34,10 @@ supported_distro( )
+   fi
+ 
+   case "${ID}" in
+-    debian|linuxmint|ubuntu|centos|rhel|fedora|sles|tencentos)
++    debian|linuxmint|ubuntu|centos|rhel|fedora|sles|tencentos|kylin|rocky)
+         true
+         ;;
+-    *)  printf "This script is currently supported on Debian, Linuxmint, Ubuntu, CentOS, RHEL, Fedora and SLES\n"
++    *)  printf "This script is currently supported on Debian, Linuxmint, Ubuntu, CentOS, RHEL, Fedora, SLES, TencentOS, Kylin and Rocky\n"
+         exit 2
+         ;;
+   esac
+@@ -68,11 +69,11 @@ exit_with_error( )
+         printf "sudo apt install -y ${library_dependencies_ubuntu[*]}\n"
+         ;;
+ 
+-      centos|rhel|tencentos)
++      centos|rhel|tencentos|kylin)
+         printf "sudo yum -y --nogpgcheck install ${library_dependencies_centos[*]}\n"
+         ;;
+ 
+-      fedora)
++      fedora|rocky)
+         printf "sudo dnf install -y ${library_dependencies_fedora[*]}\n"
+         ;;
+ 
+@@ -224,6 +225,7 @@ verbose_print=true
+ progress_report=true
+ detailed_timing=true
+ enable_tracing=false
++arch=
+ 
+ # #################################################
+ # Parameter parsing
+@@ -232,7 +234,7 @@ enable_tracing=false
+ # check if we have a modern version of getopt that can handle whitespace and long parameters
+ getopt -T
+ if [[ $? -eq 4 ]]; then
+-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-mpi-gtl:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
++  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-mpi-gtl:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing:,arch: --options hg -- "$@")
+ else
+   echo "Need a new version of getopt"
+   exit_with_error 1
+@@ -263,6 +265,9 @@ while true; do
+     --with-mpi)
+         with_mpi=${2}
+         shift 2 ;;
++    --arch)
++        arch=${2}
++        shift 2 ;;
+     --with-mpi-gtl)
+         with_mpi_gtl=${2}
+         shift 2 ;;
+@@ -294,9 +299,6 @@ printf "\033[32mCreating project build directory in: \033[33m${build_dir}\033[0m
+ # #################################################
+ # prep
+ # #################################################
+-# ensure a clean build environment
+-rm -rf ${build_dir}
+-
+ # Default cmake executable is called cmake
+ cmake_executable=cmake
+ 
+@@ -347,11 +349,14 @@ pushd .
+   if [[ "${enable_tracing}" == on || "${enable_tracing}" == true || "${enable_tracing}" == 1 || "${enable_tracing}" == enabled ]]; then
+     cmake_common_options="${cmake_common_options} -DHPL_TRACING=ON"
+   fi
++  if [[ -n "${arch}" ]]; then
++    cmake_common_options="${cmake_common_options} -DHPL_BUILD_ARCH=${arch}"
++  fi
+   shopt -u nocasematch
+ 
+   # Build library with AMD toolchain because of existence of device kernels
+   mkdir -p ${build_dir} && cd ${build_dir}
+-  ${cmake_executable} ${cmake_common_options} ..
++  ${cmake_executable} --fresh ${cmake_common_options} ..
+   check_exit_code 2
+ 
+   if [[ -e build.ninja ]]; then
+diff --git a/src/HPL_pdtest.cpp b/src/HPL_pdtest.cpp
+index 94a0d3f..3135763 100644
+--- a/src/HPL_pdtest.cpp
++++ b/src/HPL_pdtest.cpp
+@@ -212,7 +212,7 @@ void HPL_pdtest(HPL_T_test* TEST,
+                     ctime(&current_time_end));
+       }
+ #ifdef HPL_PROGRESS_REPORT
+-      printf("Final Score:    %7.4e GFLOPS \n", Gflops);
++      printf("Final Score:    %7.9e GFLOPS \n", Gflops);
+ #endif
+     }
+ #ifdef HPL_DETAILED_TIMING
+diff --git a/src/pgesv/HPL_pdgesv.cpp b/src/pgesv/HPL_pdgesv.cpp
+index d6c99c3..280a9a5 100644
+--- a/src/pgesv/HPL_pdgesv.cpp
++++ b/src/pgesv/HPL_pdgesv.cpp
+@@ -336,7 +336,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
+       printf("  %9.3e  |", step_gflops);
+ #endif
+ 
+-      printf("    %9.3e   \n", gflops);
++      printf("    %9.9e   \n", gflops);
+     }
+ #endif
+ 
