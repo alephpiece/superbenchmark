@@ -507,24 +507,19 @@ superbench:
         ib_dev: '"$(case $LOCAL_RANK in 0) echo mlx5_1 ;; 1) echo mlx5_2 ;; 2) echo mlx5_3 ;; 3) echo mlx5_4 ;; 4) echo mlx5_7 ;; 5) echo mlx5_8 ;; 6) echo mlx5_9 ;; 7) echo mlx5_10 ;; esac)"'
         numa_dev: '"$(case $LOCAL_RANK in 0) echo 3 ;; 1) echo 1 ;; 2) echo 1 ;; 3) echo 0 ;; 4) echo 7 ;; 5) echo 5 ;; 6) echo 5 ;; 7) echo 4 ;; esac)"'
         bidirectional: false
-    # dist-inference:
-    #   modes:
-    #   - name: mpi
-    #     proc_num: 8
-    #     node_num: 1
-    #     mca:
-    #       pml: ob1
-    #       btl: ^openib
-    #       btl_tcp_if_exclude: lo,docker0
-    #       coll_hcoll_enable: 0
-    #   frameworks:
-    #     - pytorch
-    #   parameters:
-    #     num_layers: 50
-    #     num_warmup: 20
-    #     num_steps: 100
-    #     use_cuda_graph: true
-    #     precision: float16
-    #     hidden_size: 128
-    #     input_size: 128
-    #     batch_size: 1024
+    dist-inference:
+      modes:
+      - name: mpi
+        proc_num: 8
+        node_num: 1
+      frameworks:
+        - pytorch
+      parameters:
+        num_layers: 20
+        num_warmup: 20
+        num_steps: 100
+        use_cuda_graph: true
+        precision: float16
+        hidden_size: 4096
+        input_size: 4096
+        batch_size: 1024
