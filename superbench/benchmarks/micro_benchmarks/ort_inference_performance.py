@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""TensorRT inference micro-benchmark."""
+"""ONNX Runtime inference micro-benchmark."""
 
 import time
 import statistics
@@ -12,12 +12,25 @@ import torchvision.models
 import numpy as np
 
 from superbench.common.utils import logger
-from superbench.benchmarks import BenchmarkRegistry, Platform, Precision
+from superbench.benchmarks import BenchmarkRegistry, Platform, Precision, ReturnCode
 from superbench.benchmarks.micro_benchmarks import MicroBenchmark
 
 
 class ORTInferenceBenchmark(MicroBenchmark):
     """ONNXRuntime inference micro-benchmark class."""
+    _execution_provider_map = {
+        'cuda': 'CUDAExecutionProvider',
+        'rocm': 'ROCMExecutionProvider',
+        'migraphx': 'MIGraphXExecutionProvider',
+        'cpu': 'CPUExecutionProvider',
+    }
+    _execution_provider_preference = [
+        'CUDAExecutionProvider',
+        'ROCMExecutionProvider',
+        'MIGraphXExecutionProvider',
+        'CPUExecutionProvider',
+    ]
+
     def __init__(self, name, parameters=''):
         """Constructor.
 
@@ -40,6 +53,7 @@ class ORTInferenceBenchmark(MicroBenchmark):
         ]
         self.__graph_opt_level = None
         self.__model_cache_path = Path(torch.hub.get_dir()) / 'checkpoints'
+        self.__execution_provider = None
 
     def add_parser_arguments(self):
         """Add the specified arguments."""
@@ -50,7 +64,7 @@ class ORTInferenceBenchmark(MicroBenchmark):
             type=str,
             nargs='+',
             default=self._pytorch_models,
-            help='ONNX models for TensorRT inference benchmark, e.g., {}.'.format(', '.join(self._pytorch_models)),
+            help='ONNX models for ONNX Runtime inference benchmark, e.g., {}.'.format(', '.join(self._pytorch_models)),
         )
 
         self._parser.add_argument(
@@ -96,6 +110,34 @@ class ORTInferenceBenchmark(MicroBenchmark):
             help='The number of test step for benchmarking.',
         )
 
+        self._parser.add_argument(
+            '--execution_provider',
+            type=str,
+            choices=['auto'] + list(self._execution_provider_map.keys()) + list(self._execution_provider_map.values()),
+            default='auto',
+            required=False,
+            help='ONNX Runtime execution provider. Use auto, cuda, rocm, migraphx, cpu, or the full provider name.',
+        )
+
+    def __select_execution_provider(self, available_providers):
+        """Select ONNX Runtime execution provider.
+
+        Args:
+            available_providers (List[str]): available ONNX Runtime execution providers.
+
+        Return:
+            str: selected execution provider.
+        """
+        provider = self._args.execution_provider
+        if provider != 'auto':
+            return self._execution_provider_map.get(provider, provider)
+
+        for preferred_provider in self._execution_provider_preference:
+            if preferred_provider in available_providers:
+                return preferred_provider
+
+        return ''
+
     def _preprocess(self):
         """Preprocess/preparation operations before the benchmarking.
 
@@ -112,6 +154,17 @@ class ORTInferenceBenchmark(MicroBenchmark):
             2: ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
             3: ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
         }
+
+        available_providers = ort.get_available_providers()
+        self.__execution_provider = self.__select_execution_provider(available_providers)
+        if self.__execution_provider not in available_providers:
+            self._result.set_return_code(ReturnCode.MICROBENCHMARK_UNSUPPORTED_ARCHITECTURE)
+            logger.error(
+                'Unsupported ONNX Runtime execution provider - benchmark: {}, provider: {}, available providers: {}.'.
+                format(self._name, self._args.execution_provider, available_providers)
+            )
+            return False
+        logger.info('Using ONNX Runtime execution provider: %s.', self.__execution_provider)
 
         for model in self._args.pytorch_models:
             if hasattr(torchvision.models, model):
@@ -146,7 +199,7 @@ class ORTInferenceBenchmark(MicroBenchmark):
             sess_options.graph_optimization_level = self.__graph_opt_level[self._args.graph_opt_level]
             file_name = '{model}.{precision}.onnx'.format(model=model, precision=self._args.precision)
             ort_sess = ort.InferenceSession(
-                f'{self.__model_cache_path / file_name}', sess_options, providers=['CUDAExecutionProvider']
+                f'{self.__model_cache_path / file_name}', sess_options, providers=[self.__execution_provider]
             )
 
             elapse_times = self.__inference(ort_sess)
@@ -196,4 +249,14 @@ BenchmarkRegistry.register_benchmark(
     'ort-inference',
     ORTInferenceBenchmark,
     platform=Platform.CUDA,
+)
+BenchmarkRegistry.register_benchmark(
+    'ort-inference',
+    ORTInferenceBenchmark,
+    platform=Platform.ROCM,
+)
+BenchmarkRegistry.register_benchmark(
+    'ort-inference',
+    ORTInferenceBenchmark,
+    platform=Platform.DTK,
 )
