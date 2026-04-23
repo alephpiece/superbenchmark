@@ -1,17 +1,29 @@
-ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/vllm:0.11.0-ubuntu22.04-dtk26.04-py3.10
+ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/vllm:0.11.0-ubuntu22.04-dtk26.04-py3.11
 
 FROM ${BASE_IMAGE}
 
-# OS:
+# Included in the base image:
 #   - Ubuntu: 22.04
-#   - Docker Client: 20.10.8
-# DTK:
+#   - Python: 3.11
 #   - DTK: 26.04
-# Lib:
-#   - ucx: 1.20.0
-#   - openmpi: 5.0.9
-# Intel:
-#   - mlc: v3.12
+#   - AMD SMI: 24.5.3+02cbffb.dirty
+#   - Torch: 2.5.1+das.opt1.dtk2604
+#   - Torchvision: 0.20.1+das.opt1.dtk2604.torch251
+#   - vLLM: 0.11.0+das.opt1.dtk2604.torch251
+#   - ONNX Runtime: 1.19.2+das.opt1.dtk2604.torch251
+#   - DeepSpeed: 0.15.4+das.opt1.dtk2604.torch251
+#   - Apex: 1.5.0+das.opt1.dtk2604.torch251
+#   - FlashAttention: 2.6.1+das.opt1.dtk2604.torch251
+#   - Transformer Engine: 2.7.0+das.opt1.dtk2604.torch251
+#   - Triton: 3.1.0+das.opt1.dtk2604.torch251
+# Added or changed by this Dockerfile:
+#   - Docker client: 20.10.8
+#   - UCX: 1.20.0, built with DTK/ROCm support
+#   - Open MPI: 5.0.9, built with UCX and DTK/ROCm support
+#   - Intel MLC: v3.12
+#   - rocblas-bench and hipblaslt-bench command symlinks
+#   - RCCL topology mapping override for DTK
+#   - SSH and ulimit configuration
 
 LABEL maintainer="SuperBench"
 
@@ -42,7 +54,7 @@ RUN apt-get update && \
     openssh-client \
     openssh-server \
     pciutils \
-    python3.10-venv \
+    python3.11-venv \
     rsync \
     sudo \
     util-linux \
