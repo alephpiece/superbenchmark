@@ -216,7 +216,7 @@ elif [[ -n ${FLUX_TASK_LOCAL_ID+x} ]]; then
 fi
 set -u
 
-#Determing node-local grid size
+#Determining node-local grid size
 if [[ "$p" -lt 1 && "$q" -lt 1 ]]; then
   # no node-local grid was specified, pick defaults
   q=$(( (Q<=size) ? Q : size))
