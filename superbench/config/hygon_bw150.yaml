@@ -281,48 +281,6 @@ superbench:
         bcast: 1
         warmup: 1
         iterations: 5
-    gpu-hpcg:r32:
-      enable: false
-      modes:
-        - name: mpi
-          proc_num: 8
-          node_num: 4
-          host_list: [node01, node02, node03, node04]
-          bind_to: none
-          mca:
-            pml: ob1
-            btl: ^openib
-            btl_tcp_if_include: p14p2
-            coll_hcoll_enable: 0
-      parameters:
-        nx: 560
-        ny: 280
-        nz: 280
-        rt: 10
-        npx: 4
-        npy: 4
-        npz: 2
-    gpu-hpcg:r16:
-      enable: false
-      modes:
-        - name: mpi
-          proc_num: 8
-          node_num: 2
-          host_list: [node01, node02]
-          bind_to: none
-          mca:
-            pml: ob1
-            btl: ^openib
-            btl_tcp_if_include: p14p2
-            coll_hcoll_enable: 0
-      parameters:
-        nx: 560
-        ny: 280
-        nz: 280
-        rt: 10
-        npx: 4
-        npy: 2
-        npz: 2
     gpu-hpcg:r8:
       enable: false
       modes:
