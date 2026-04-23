@@ -167,9 +167,6 @@ superbench:
           proc_num: 8
           node_num: 1
           bind_to: none
-          env:
-            UCX_RNDV_SCHEME: put_zcopy
-            UCX_MEMTYPE_CACHE: n
       parameters:
         p: 4
         q: 2
@@ -185,9 +182,6 @@ superbench:
           proc_num: 4
           node_num: 1
           bind_to: none
-          env:
-            UCX_RNDV_SCHEME: put_zcopy
-            UCX_MEMTYPE_CACHE: n
       parameters:
         p: 4
         q: 1
@@ -203,9 +197,6 @@ superbench:
           proc_num: 2
           node_num: 1
           bind_to: none
-          env:
-            UCX_RNDV_SCHEME: put_zcopy
-            UCX_MEMTYPE_CACHE: n
       parameters:
         p: 2
         q: 1
@@ -221,9 +212,6 @@ superbench:
           proc_num: 1
           node_num: 1
           bind_to: none
-          env:
-            UCX_RNDV_SCHEME: put_zcopy
-            UCX_MEMTYPE_CACHE: n
       parameters:
         p: 1
         q: 1
@@ -245,6 +233,7 @@ superbench:
         q: 2
         n: 344064
         nb: 4096
+        bcast: 1
         warmup: 1
         iterations: 5
     gpu-hpl-mxp:r4:
@@ -259,6 +248,7 @@ superbench:
         q: 1
         n: 245760
         nb: 4096
+        bcast: 1
         warmup: 1
         iterations: 5
     gpu-hpl-mxp:r2:
@@ -273,6 +263,7 @@ superbench:
         q: 1
         n: 172032
         nb: 4096
+        bcast: 1
         warmup: 1
         iterations: 5
     gpu-hpl-mxp:r1:
@@ -287,6 +278,7 @@ superbench:
         q: 1
         n: 122880
         nb: 4096
+        bcast: 1
         warmup: 1
         iterations: 5
     gpu-hpcg:r32:
