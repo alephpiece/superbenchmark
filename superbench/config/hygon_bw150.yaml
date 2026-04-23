@@ -396,24 +396,19 @@ superbench:
       parameters:
         mem_type: [htod, dtoh, dtod, one_to_all, all_to_one, all_to_all]
         copy_type: [sm, dma]
-    # dist-inference:
-    #   modes:
-    #   - name: mpi
-    #     proc_num: 8
-    #     node_num: 1
-    #     mca:
-    #       pml: ob1
-    #       btl: ^openib
-    #       btl_tcp_if_exclude: lo,docker0
-    #       coll_hcoll_enable: 0
-    #   frameworks:
-    #     - pytorch
-    #   parameters:
-    #     num_layers: 50
-    #     num_warmup: 20
-    #     num_steps: 100
-    #     use_cuda_graph: true
-    #     precision: float16
-    #     hidden_size: 128
-    #     input_size: 128
-    #     batch_size: 1024
+    dist-inference:
+      modes:
+      - name: mpi
+        proc_num: 8
+        node_num: 1
+      frameworks:
+        - pytorch
+      parameters:
+        num_layers: 20
+        num_warmup: 20
+        num_steps: 100
+        use_cuda_graph: true
+        precision: float16
+        hidden_size: 4096
+        input_size: 4096
+        batch_size: 1024
