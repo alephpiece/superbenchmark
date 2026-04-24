@@ -424,26 +424,7 @@ superbench:
           - mobilenet_v2
         precision: float16
         batch_size: 1
-    sharding-matmul:
-      enable: true
-      modes:
-        - name: torch.distributed
-          proc_num: 8
-          node_num: 1
-      frameworks:
-        - pytorch
-      parameters:
-        num_warmup: 2
-        num_steps: 5
     computation-communication-overlap:
-      enable: true
-      modes:
-        - name: torch.distributed
-          proc_num: 8
-          node_num: 1
-      frameworks:
-        - pytorch
-      parameters:
-        num_warmup: 2
-        num_steps: 5
-        ratio: 5
+      <<: *default_pytorch_mode
+    sharding-matmul:
+      <<: *default_pytorch_mode

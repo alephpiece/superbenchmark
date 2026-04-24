@@ -176,7 +176,7 @@ class SuperBenchRunner():
             # TODO: replace with torch.distributed.run in v1.9
             # TODO: only supports node_num=1 and node_num=all currently
             torch_dist_params = (
-                '' if 'node_num' in mode and mode.node_num == 1 else
+                '--standalone ' if 'node_num' in mode and mode.node_num == 1 else
                 '--nnodes=$NNODES --node_rank=$NODE_RANK --master_addr=$MASTER_ADDR --master_port=$MASTER_PORT '
             )
 
