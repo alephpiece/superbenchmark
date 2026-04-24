@@ -152,6 +152,19 @@ Inference performance of the torchvision models using ONNXRuntime. Currently the
 
 The supported percentiles are 50, 90, 95, 99, and 99.9.
 
+#### Parameters
+
+| Parameter              | Default | Description                                                                 |
+|------------------------|---------|-----------------------------------------------------------------------------|
+| `--pytorch_models`     | See above | Torchvision models to export to ONNX and run with ONNX Runtime.           |
+| `--precision`          | `float16` | Inference precision: `float32`, `float16`, or `int8`.                     |
+| `--graph_opt_level`    | `3`     | ONNX Runtime graph optimization level: `0`, `1`, `2`, or `3`.              |
+| `--batch_size`         | `32`    | Batch size of the generated input tensor.                                  |
+| `--num_warmup`         | `64`    | Number of warmup inference iterations excluded from metrics.               |
+| `--num_steps`          | `256`   | Number of measured inference iterations.                                   |
+| `--execution_provider` | `auto`  | ONNX Runtime execution provider: `auto`, `cuda`, `rocm`, `migraphx`, `cpu`, or a full provider name. |
+| `--pretrained`         | `false` | Use pretrained torchvision weights when exporting ONNX models.             |
+
 #### Metrics
 
 | Name                                                | Unit      | Description                                                              |
@@ -683,6 +696,28 @@ Test the performance of large scale matmul operation with multiple GPUs:
 #### Introduction
 
 Test the performance of distributed model inference. Support both PyTorch implementation and cpp implementation.
+
+#### Parameters
+
+| Parameter                | Default     | Description                                                                 |
+|--------------------------|-------------|-----------------------------------------------------------------------------|
+| `--use_pytorch`          | `false`     | Use the PyTorch implementation. If omitted, the C++ implementation is used. |
+| `--batch_size`           | `64`        | Batch size of the generated input tensor.                                   |
+| `--input_size`           | `1024`      | Input dimension of the synthetic model.                                     |
+| `--hidden_size`          | `1024`      | Hidden dimension of the synthetic model.                                    |
+| `--alpha`                | `1.0`       | Alpha coefficient for `D = alpha * (A * B) + beta * C`.                    |
+| `--beta`                 | `1.0`       | Beta coefficient for `D = alpha * (A * B) + beta * C`.                     |
+| `--num_layers`           | `1`         | Number of repeated compute-communicate-activate layers.                     |
+| `--computation_kernel`   | `matmul`    | Computation kernel: `addmm`, `matmul`, or `mul`.                           |
+| `--communication_kernel` | `allreduce` | Communication kernel: `allgather`, `allreduce`, or `alltoall`.             |
+| `--activation_kernel`    | `relu`      | Activation kernel: `relu`, `sigmoid`, or `tanh`.                           |
+| `--precision`            | `float32`   | Model precision, such as `float32` or `float16`.                           |
+| `--num_warmup`           | `50`        | Number of warmup steps excluded from metrics.                              |
+| `--num_steps`            | `10000`     | Number of measured inference steps.                                        |
+| `--distributed_impl`     | `ddp`       | Distributed implementation for the PyTorch path.                           |
+| `--distributed_backend`  | `nccl`      | Distributed backend for the PyTorch path.                                  |
+| `--use_cuda_graph`       | `false`     | Launch kernels in CUDA graph mode when supported.                          |
+| `--tune_gemm`            | `false`     | Tune GEMM performance before measurement in the C++ implementation.         |
 
 #### Metrics
 
