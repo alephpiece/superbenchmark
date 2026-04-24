@@ -424,3 +424,7 @@ superbench:
           - mobilenet_v2
         precision: float16
         batch_size: 1
+    computation-communication-overlap:
+      <<: *default_pytorch_mode
+    sharding-matmul:
+      <<: *default_pytorch_mode
