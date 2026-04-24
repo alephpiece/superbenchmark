@@ -57,6 +57,7 @@ def test_ort_inference_performance(mock_ort_session_run, mock_get_dir):
     assert (benchmark._args.pytorch_models == ['resnet50'])
     assert (benchmark._args.graph_opt_level == 1)
     assert (benchmark._args.precision == Precision.FLOAT16)
+    assert (benchmark._args.pretrained is False)
     assert (benchmark._args.batch_size == 16)
     assert (benchmark._args.num_warmup == 128)
     assert (benchmark._args.num_steps == 512)

@@ -7,6 +7,7 @@ import time
 import statistics
 from pathlib import Path
 
+from packaging import version
 import torch
 import torchvision.models
 import numpy as np
@@ -119,6 +120,14 @@ class ORTInferenceBenchmark(MicroBenchmark):
             help='ONNX Runtime execution provider. Use auto, cuda, rocm, migraphx, cpu, or the full provider name.',
         )
 
+        self._parser.add_argument(
+            '--pretrained',
+            action='store_true',
+            default=False,
+            required=False,
+            help='Whether to use pretrained torchvision model weights when exporting ONNX models.',
+        )
+
     def __select_execution_provider(self, available_providers):
         """Select ONNX Runtime execution provider.
 
@@ -171,8 +180,12 @@ class ORTInferenceBenchmark(MicroBenchmark):
                 data_type = Precision.FLOAT16.value if self._args.precision == Precision.FLOAT16 \
                     else Precision.FLOAT32.value
                 model_path = f'{self.__model_cache_path / (model + "." + data_type + ".onnx")}'
+                if version.parse(torchvision.__version__) < version.parse('0.13'):
+                    model_args = {'pretrained': self._args.pretrained}
+                else:
+                    model_args = {'pretrained': True} if self._args.pretrained else {'weights': None}
                 torch.onnx.export(
-                    getattr(torchvision.models, model)(pretrained=True).to(dtype=getattr(torch, data_type)).cuda(),
+                    getattr(torchvision.models, model)(**model_args).to(dtype=getattr(torch, data_type)).cuda(),
                     torch.randn(self._args.batch_size, 3, 224, 224, device='cuda', dtype=getattr(torch, data_type)),
                     model_path,
                     input_names=['input'],

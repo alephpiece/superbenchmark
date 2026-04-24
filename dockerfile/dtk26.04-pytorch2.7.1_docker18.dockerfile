@@ -184,7 +184,7 @@ RUN sed -i '/NCCL_/d' /etc/bash.bashrc && \
     echo VIRTUAL_ENV="$VIRTUAL_ENV" >> /etc/environment
 
 RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} && \
-    python3 -m pip install -i ${SB_PIP_INDEX_URL} --upgrade pip wheel setuptools==65.7 mpi4py && \
+    python3 -m pip install -i ${SB_PIP_INDEX_URL} --upgrade pip wheel setuptools==65.7 mpi4py onnx==1.19.1 && \
     python3 -m pip install -i ${SB_PIP_INDEX_URL} --no-build-isolation .[hgworker] && \
     make cppbuild  && \
     make postinstall
