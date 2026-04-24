@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/pytorch:2.7.1-ubuntu22.04-dtk26.04-py3.11
+ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/vllm:0.11.0-ubuntu22.04-dtk26.04-py3.11
 
 FROM ${BASE_IMAGE}
 
@@ -7,18 +7,15 @@ FROM ${BASE_IMAGE}
 #   - Python: 3.11
 #   - DTK: 26.04
 #   - AMD SMI: 24.5.3+02cbffb.dirty
-#   - Torch: 2.7.1+das.opt1.dtk2604
-#   - Torchvision: 0.22.0+das.opt1.dtk2604.torch271
-#   - vLLM: 0.11.0+das.opt1.dtk2604.torch271
-#   - ONNX Runtime: 1.19.2+das.opt1.dtk2604.torch271
-#   - DeepSpeed: 0.18.2+das.opt1.dtk2604.torch271
-#   - Apex: 1.7.0+das.opt1.dtk2604.torch271
-#   - FlashAttention: 2.6.1+das.opt1.dtk2604.torch271
-#   - Transformer Engine: 2.10.0+das.opt1.dtk2604.torch271
-#   - Triton: 3.1.0+das.opt1.dtk2604.torch271
-#   - Megatron Core: 0.15.4+das.opt1.dtk2604.torch271
-#   - DCU Megatron: 0.15.0+das.opt1.dtk2604.torch271
-#   - Byte Flux: 1.0.4+das.opt1.dtk2604.torch271
+#   - Torch: 2.5.1+das.opt1.dtk2604
+#   - Torchvision: 0.20.1+das.opt1.dtk2604.torch251
+#   - vLLM: 0.11.0+das.opt1.dtk2604.torch251
+#   - ONNX Runtime: 1.19.2+das.opt1.dtk2604.torch251
+#   - DeepSpeed: 0.15.4+das.opt1.dtk2604.torch251
+#   - Apex: 1.5.0+das.opt1.dtk2604.torch251
+#   - FlashAttention: 2.6.1+das.opt1.dtk2604.torch251
+#   - Transformer Engine: 2.7.0+das.opt1.dtk2604.torch251
+#   - Triton: 3.1.0+das.opt1.dtk2604.torch251
 # Added or changed by this Dockerfile:
 #   - Docker client: 20.10.8
 #   - UCX: 1.20.0, built with DTK/ROCm support
@@ -85,11 +82,15 @@ RUN mkdir -p /root/.ssh && \
 
 ENV ROCM_PATH=/opt/dtk
 
+# Docker 18.09 legacy builder cannot use BuildKit-only named contexts or
+# RUN --mount. Prepare a local ./hyhal directory in the build context before
+# running docker build, then copy it into the image.
+COPY hyhal /opt/hyhal
+
 # Install UCX
 ARG UCX_VERSION=1.20.0
 ARG UCX_HOME=/opt/ucx
-RUN --mount=type=bind,from=hyhal,source=/,target=/opt/hyhal \
-    cd /tmp && \
+RUN cd /tmp && \
     wget https://github.com/openucx/ucx/releases/download/v${UCX_VERSION}/ucx-${UCX_VERSION}.tar.gz && \
     tar xzf ucx-${UCX_VERSION}.tar.gz && \
     cd ucx-${UCX_VERSION} && \
@@ -108,8 +109,7 @@ RUN --mount=type=bind,from=hyhal,source=/,target=/opt/hyhal \
 # Install OpenMPI
 ENV MPI_HOME=/opt/mpi
 ARG OMPI_VERSION=5.0.9
-RUN --mount=type=bind,from=hyhal,source=/,target=/opt/hyhal \
-    cd /tmp && \
+RUN cd /tmp && \
     wget https://download.open-mpi.org/release/open-mpi/v${OMPI_VERSION%.*}/openmpi-${OMPI_VERSION}.tar.gz && \
     tar xzf openmpi-${OMPI_VERSION}.tar.gz && \
     cd openmpi-${OMPI_VERSION} && \
@@ -152,8 +152,7 @@ WORKDIR ${SB_HOME}
 COPY third_party third_party
 COPY dockerfile/etc/dtk26.04-topo-mapping.xml ${ROCM_PATH}/rccl/lib/topo_mapping_default.xml
 
-RUN --mount=type=bind,from=hyhal,source=/,target=/opt/hyhal \
-    make \
+RUN make \
     RCCL_HOME=${ROCM_PATH}/rccl \
     ROCM_PATH=${ROCM_PATH} \
     HIP_HOME=${ROCM_PATH}/hip \
@@ -181,8 +180,7 @@ RUN sed -i '/NCCL_/d' /etc/bash.bashrc && \
     echo SB_MICRO_PATH="$SB_MICRO_PATH" >> /etc/environment && \
     echo VIRTUAL_ENV="$VIRTUAL_ENV" >> /etc/environment
 
-RUN --mount=type=bind,from=hyhal,source=/,target=/opt/hyhal \
-    python3 -m venv --system-site-packages ${VIRTUAL_ENV} && \
+RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} && \
     python3 -m pip install -i ${SB_PIP_INDEX_URL} --upgrade pip wheel setuptools==65.7 mpi4py onnx==1.19.1 && \
     python3 -m pip install -i ${SB_PIP_INDEX_URL} --no-build-isolation .[hgworker] && \
     make cppbuild  && \

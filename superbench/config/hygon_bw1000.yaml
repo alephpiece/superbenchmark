@@ -523,3 +523,15 @@ superbench:
         hidden_size: 4096
         input_size: 4096
         batch_size: 1024
+    ort-inference:
+      <<: *default_local_mode
+      parameters:
+        execution_provider: rocm
+        pytorch_models:
+          - resnet50
+          - resnet152
+          - resnext50_32x4d
+          - wide_resnet50_2
+          - mobilenet_v2
+        precision: float16
+        batch_size: 1

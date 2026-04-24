@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/vllm:0.11.0-ubuntu22.04-dtk26.04-py3.11
+ARG BASE_IMAGE=harbor.sourcefind.cn:5443/dcu/admin/base/pytorch:2.7.1-ubuntu22.04-dtk26.04-py3.11
 
 FROM ${BASE_IMAGE}
 
@@ -7,15 +7,18 @@ FROM ${BASE_IMAGE}
 #   - Python: 3.11
 #   - DTK: 26.04
 #   - AMD SMI: 24.5.3+02cbffb.dirty
-#   - Torch: 2.5.1+das.opt1.dtk2604
-#   - Torchvision: 0.20.1+das.opt1.dtk2604.torch251
-#   - vLLM: 0.11.0+das.opt1.dtk2604.torch251
-#   - ONNX Runtime: 1.19.2+das.opt1.dtk2604.torch251
-#   - DeepSpeed: 0.15.4+das.opt1.dtk2604.torch251
-#   - Apex: 1.5.0+das.opt1.dtk2604.torch251
-#   - FlashAttention: 2.6.1+das.opt1.dtk2604.torch251
-#   - Transformer Engine: 2.7.0+das.opt1.dtk2604.torch251
-#   - Triton: 3.1.0+das.opt1.dtk2604.torch251
+#   - Torch: 2.7.1+das.opt1.dtk2604
+#   - Torchvision: 0.22.0+das.opt1.dtk2604.torch271
+#   - vLLM: 0.11.0+das.opt1.dtk2604.torch271
+#   - ONNX Runtime: 1.19.2+das.opt1.dtk2604.torch271
+#   - DeepSpeed: 0.18.2+das.opt1.dtk2604.torch271
+#   - Apex: 1.7.0+das.opt1.dtk2604.torch271
+#   - FlashAttention: 2.6.1+das.opt1.dtk2604.torch271
+#   - Transformer Engine: 2.10.0+das.opt1.dtk2604.torch271
+#   - Triton: 3.1.0+das.opt1.dtk2604.torch271
+#   - Megatron Core: 0.15.4+das.opt1.dtk2604.torch271
+#   - DCU Megatron: 0.15.0+das.opt1.dtk2604.torch271
+#   - Byte Flux: 1.0.4+das.opt1.dtk2604.torch271
 # Added or changed by this Dockerfile:
 #   - Docker client: 20.10.8
 #   - UCX: 1.20.0, built with DTK/ROCm support
@@ -181,7 +184,7 @@ RUN sed -i '/NCCL_/d' /etc/bash.bashrc && \
     echo VIRTUAL_ENV="$VIRTUAL_ENV" >> /etc/environment
 
 RUN python3 -m venv --system-site-packages ${VIRTUAL_ENV} && \
-    python3 -m pip install -i ${SB_PIP_INDEX_URL} --upgrade pip wheel setuptools==65.7 mpi4py && \
+    python3 -m pip install -i ${SB_PIP_INDEX_URL} --upgrade pip wheel setuptools==65.7 mpi4py onnx==1.19.1 && \
     python3 -m pip install -i ${SB_PIP_INDEX_URL} --no-build-isolation .[hgworker] && \
     make cppbuild  && \
     make postinstall
