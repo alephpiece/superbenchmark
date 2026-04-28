@@ -10,6 +10,11 @@ from pathlib import Path
 from superbench.common.utils import logger
 
 
+def _natural_sort_key(s):
+    """Build sort key for device and port names with numeric suffix."""
+    return [int(ch) if ch.isdigit() else ch for ch in re.split(r'(\d+)', s)]
+
+
 def get_free_port():
     """Get a free port in current system.
 
@@ -58,7 +63,7 @@ def get_ib_devices():
     ib_devices_port_dict = {}
     for device in devices:
         ports = list(p.name for p in (Path('/sys/class/infiniband') / device / 'ports').glob('*'))
-        ports.sort(key=lambda s: [int(ch) if ch.isdigit() else ch for ch in re.split(r'(\d+)', s)])
+        ports.sort(key=_natural_sort_key)
         for port in ports:
             with (Path('/sys/class/infiniband') / device / 'ports' / port / 'link_layer').open('r') as f:
                 # Filter 'InfiniBand' devices by link_layer
@@ -68,8 +73,70 @@ def get_ib_devices():
                     else:
                         ib_devices_port_dict[device].append(port)
     ib_devices = list(ib_devices_port_dict.keys())
-    ib_devices.sort(key=lambda s: [int(ch) if ch.isdigit() else ch for ch in re.split(r'(\d+)', s)])
+    ib_devices.sort(key=_natural_sort_key)
     ib_devices_port = []
     for device in ib_devices:
         ib_devices_port.append(device + ':' + ','.join(ib_devices_port_dict[device]))
     return ib_devices_port
+
+
+def _read_sysfs_file(path):
+    """Read sysfs file and return stripped content."""
+    try:
+        with path.open('r') as f:
+            return f.read().strip()
+    except IOError:
+        return ''
+
+
+def _get_port_netdevs(port_path):
+    """Get network devices associated with RDMA GID entries."""
+    netdevs = []
+    ndevs_path = port_path / 'gid_attrs' / 'ndevs'
+    for ndev_path in sorted(ndevs_path.glob('*'), key=lambda p: _natural_sort_key(p.name)):
+        netdev = _read_sysfs_file(ndev_path)
+        if netdev and netdev not in netdevs:
+            netdevs.append(netdev)
+    return netdevs
+
+
+def get_rdma_devices(link_layer='all'):
+    """Get available RDMA devices with ports in the system.
+
+    Args:
+        link_layer (str): RDMA link layer filter. Supported values are 'all', 'infiniband', and 'ethernet'.
+
+    Return:
+        list: RDMA device port metadata in current system.
+    """
+    supported_link_layers = ['all', 'infiniband', 'ethernet']
+    normalized_link_layer = link_layer.lower()
+    if normalized_link_layer not in supported_link_layers:
+        logger.log_and_raise(
+            exception=ValueError,
+            msg='Unsupported RDMA link layer: {}. Expected one of {}.'.format(
+                link_layer, ', '.join(supported_link_layers)
+            )
+        )
+
+    devices = sorted(list(p.name for p in Path('/sys/class/infiniband').glob('*')), key=_natural_sort_key)
+    rdma_devices = []
+    for device in devices:
+        ports_path = Path('/sys/class/infiniband') / device / 'ports'
+        ports = sorted(list(p.name for p in ports_path.glob('*')), key=_natural_sort_key)
+        for port in ports:
+            port_path = ports_path / port
+            device_link_layer = _read_sysfs_file(port_path / 'link_layer')
+            if normalized_link_layer != 'all' and device_link_layer.lower() != normalized_link_layer:
+                continue
+            rdma_devices.append(
+                {
+                    'device': device,
+                    'port': port,
+                    'link_layer': device_link_layer,
+                    'state': _read_sysfs_file(port_path / 'state'),
+                    'phys_state': _read_sysfs_file(port_path / 'phys_state'),
+                    'netdevs': _get_port_netdevs(port_path),
+                }
+            )
+    return rdma_devices

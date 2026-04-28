@@ -51,6 +51,10 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
         self.__sock_fds = []
         self.__support_rdma_commands = {'write': 'ib_write_bw', 'read': 'ib_read_bw', 'send': 'ib_send_bw'}
         self.__support_gpu_backends = ['none', 'cuda', 'rocm']
+        self.__support_link_layers = ['infiniband', 'ethernet']
+        self.__rdma_device = None
+        self.__gpu_device = None
+        self.__numa_node = None
 
     def __del__(self):
         """Destructor."""
@@ -62,18 +66,20 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
         super().add_parser_arguments()
 
         self._parser.add_argument(
-            '--rdma_index',
-            type=int,
-            default=0,
-            required=False,
-            help='The index of RDMA device.',
-        )
-        self._parser.add_argument(
-            '--rdma_dev',
+            '--link_layer',
             type=str,
             default=None,
             required=False,
-            help='The RDMA device name, e.g., mlx5_0.',
+            choices=self.__support_link_layers,
+            help='The expected RDMA link layer.',
+        )
+        self._parser.add_argument(
+            '--rdma_mapping',
+            type=str,
+            nargs='+',
+            default=None,
+            required=False,
+            help='The rank mapping entries in RDMA[:GPU[:NUMA]] format, e.g., mlx5_2:0:3 mlx5_4:1.',
         )
         self._parser.add_argument(
             '--iters',
@@ -139,13 +145,6 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
             help='The GPU backend used for GPUDirect RDMA testing.',
         )
         self._parser.add_argument(
-            '--gpu_dev',
-            type=int,
-            default=None,
-            required=False,
-            help='The GPU device id used for GPUDirect RDMA testing.',
-        )
-        self._parser.add_argument(
             '--gpu_dmabuf',
             action='store_true',
             default=False,
@@ -167,31 +166,130 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
             help='Touch GPU pages before GPUDirect RDMA testing.',
         )
 
-    def _get_arguments_from_env(self):
-        """Read environment variables from runner used for parallel and fill in RDMA and NUMA selections.
+    def _get_proc_rank(self):
+        """Get the rank of current process."""
+        if os.getenv('PROC_RANK'):
+            return int(os.getenv('PROC_RANK'))
+        return 0
 
-        Get 'PROC_RANK'(rank of current process) 'RDMA_DEVICES' 'GPU_DEVICES' 'NUMA_NODES' environment variables.
-        Get RDMA device, GPU device, and NUMA node according to the value at 'PROC_RANK'.
-        Note: The config from env variables will overwrite the configs defined in the command line.
-        """
+    def _get_rdma_mapping_entries(self):
+        """Normalize RDMA mapping argument to a list of entries."""
+        entries = []
+        if not self._args.rdma_mapping:
+            return entries
+        for mapping_arg in self._args.rdma_mapping:
+            entries += [entry.strip() for entry in mapping_arg.split(',') if entry.strip()]
+        return entries
+
+    def _resolve_rdma_ref(self, rdma_ref):
+        """Resolve RDMA mapping reference to device name."""
+        if not rdma_ref.isdigit() and not self._args.link_layer:
+            return rdma_ref
+
         try:
-            if os.getenv('PROC_RANK'):
-                rank = int(os.getenv('PROC_RANK'))
-                if os.getenv('RDMA_DEVICES'):
-                    rdma_device = os.getenv('RDMA_DEVICES').split(',')[rank].strip()
-                    if rdma_device.isdigit():
-                        self._args.rdma_index = int(rdma_device)
-                        self._args.rdma_dev = None
-                    else:
-                        self._args.rdma_dev = rdma_device
-                if os.getenv('GPU_DEVICES'):
-                    self._args.gpu_dev = int(os.getenv('GPU_DEVICES').split(',')[rank])
-                if os.getenv('NUMA_NODES'):
-                    self._args.numa = int(os.getenv('NUMA_NODES').split(',')[rank])
-            return True
-        except BaseException:
-            logger.error('The proc_rank is out of index of devices - benchmark: {}.'.format(self._name))
+            rdma_devices = network.get_rdma_devices()
+        except BaseException as e:
+            self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
+            logger.error('Getting RDMA devices failure - benchmark: {}, message: {}.'.format(self._name, str(e)))
+            return None
+
+        rdma_device = None
+        if rdma_ref.isdigit():
+            rdma_index = int(rdma_ref)
+            if rdma_devices and 0 <= rdma_index < len(rdma_devices):
+                rdma_device = rdma_devices[rdma_index]
+        elif rdma_devices:
+            rdma_device = next((device for device in rdma_devices if device['device'] == rdma_ref), None)
+
+        if not rdma_device:
+            self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
+            logger.error(
+                'Getting RDMA devices failure - benchmark: {}, device: {}, devices: {}.'.format(
+                    self._name, rdma_ref, rdma_devices
+                )
+            )
+            return None
+
+        if self._args.link_layer and rdma_device['link_layer'].lower() != self._args.link_layer:
+            self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
+            logger.error(
+                'RDMA link layer mismatch - benchmark: {}, device: {}, expected: {}, actual: {}.'.format(
+                    self._name, rdma_device['device'], self._args.link_layer, rdma_device['link_layer']
+                )
+            )
+            return None
+        return rdma_device['device']
+
+    def _parse_rdma_mapping_entry(self, entry):
+        """Parse one RDMA mapping entry and apply it to the benchmark."""
+        fields = entry.split(':')
+        if len(fields) > 3 or not fields[0]:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error(
+                'Invalid RDMA mapping entry - benchmark: {}, entry: {}, expected format: RDMA[:GPU[:NUMA]].'.format(
+                    self._name, entry
+                )
+            )
             return False
+        if len(fields) == 2 and not fields[1]:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('Invalid RDMA mapping entry - benchmark: {}, entry: {}.'.format(self._name, entry))
+            return False
+        if len(fields) == 3 and not fields[2]:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('Invalid RDMA mapping entry - benchmark: {}, entry: {}.'.format(self._name, entry))
+            return False
+
+        self.__rdma_device = self._resolve_rdma_ref(fields[0])
+        if not self.__rdma_device:
+            return False
+
+        try:
+            self.__gpu_device = int(fields[1]) if len(fields) >= 2 and fields[1] else None
+            self.__numa_node = int(fields[2]) if len(fields) == 3 else None
+        except BaseException:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error(
+                'Invalid RDMA mapping value - benchmark: {}, entry: {}, expected numeric GPU and NUMA.'.format(
+                    self._name, entry
+                )
+            )
+            return False
+        if self.__gpu_device is not None and self.__gpu_device < 0:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('GPU device id must be non-negative - benchmark: {}, entry: {}.'.format(self._name, entry))
+            return False
+        if self.__numa_node is not None and self.__numa_node < 0:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('NUMA node must be non-negative - benchmark: {}, entry: {}.'.format(self._name, entry))
+            return False
+        return True
+
+    def _apply_rdma_mapping(self):
+        """Apply the current rank's RDMA/GPU/NUMA mapping."""
+        entries = self._get_rdma_mapping_entries()
+        if not entries:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('RDMA mapping is required - benchmark: {}.'.format(self._name))
+            return False
+
+        try:
+            rank = self._get_proc_rank()
+        except BaseException:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('Invalid PROC_RANK - benchmark: {}, PROC_RANK: {}.'.format(self._name, os.getenv('PROC_RANK')))
+            return False
+
+        if rank < 0 or rank >= len(entries):
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error(
+                'The rank is out of RDMA mapping entries - benchmark: {}, rank: {}, rdma_mapping: {}.'.format(
+                    self._name, rank, entries
+                )
+            )
+            return False
+
+        return self._parse_rdma_mapping_entry(entries[rank])
 
     def _bind_free_port(self):
         """Bind a local TCP socket to a free port and keep it reserved."""
@@ -207,26 +305,19 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
             return False
         return True
 
-    def _resolve_rdma_device(self):
-        """Resolve the RDMA device name from explicit device name or discovered device index."""
-        if self._args.rdma_dev:
-            return self._args.rdma_dev
-
+    def _get_affinity_cores(self):
+        """Get available CPU cores from current process affinity."""
         try:
-            rdma_devices = network.get_ib_devices()
-        except BaseException as e:
-            self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
-            logger.error('Getting RDMA devices failure - benchmark: {}, message: {}.'.format(self._name, str(e)))
-            return None
-        if not rdma_devices or self._args.rdma_index < 0 or self._args.rdma_index >= len(rdma_devices):
-            self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
-            logger.error(
-                'Getting RDMA devices failure - benchmark: {}, device index: {}, devices: {}.'.format(
-                    self._name, self._args.rdma_index, rdma_devices
-                )
-            )
-            return None
-        return rdma_devices[self._args.rdma_index].split(':')[0]
+            return sorted(os.sched_getaffinity(0))
+        except AttributeError:
+            cpu_count = os.cpu_count()
+            return list(range(cpu_count)) if cpu_count else None
+
+    def _get_cpu_cores(self):
+        """Get CPU cores from NUMA node or current process affinity."""
+        if self.__numa_node is not None:
+            return get_numa_cores(self.__numa_node)
+        return self._get_affinity_cores()
 
     def _get_command_mode(self):
         """Get perftest message size mode."""
@@ -242,9 +333,7 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
 
     def _get_metric_suffix(self):
         """Get suffix used for RDMA loopback metrics."""
-        if self._args.rdma_dev:
-            return self._args.rdma_dev
-        return str(self._args.rdma_index)
+        return self.__rdma_device
 
     def _build_perftest_options(self, rdma_device):
         """Build perftest command options."""
@@ -267,7 +356,7 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
     def _validate_gpu_arguments(self):
         """Validate GPU memory arguments."""
         if self._args.gpu_backend == 'none':
-            if self._args.gpu_dev is not None:
+            if self.__gpu_device is not None:
                 self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
                 logger.error('GPU device requires GPU backend - benchmark: {}.'.format(self._name))
                 return False
@@ -276,7 +365,7 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
                 logger.error('GPU options require GPU backend - benchmark: {}.'.format(self._name))
                 return False
         else:
-            if self._args.gpu_dev is None:
+            if self.__gpu_device is None:
                 self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
                 logger.error('GPU backend requires GPU device - benchmark: {}.'.format(self._name))
                 return False
@@ -291,7 +380,7 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
         if self._args.gpu_backend == 'none':
             return ''
 
-        command = ' --use_' + self._args.gpu_backend + ' ' + str(self._args.gpu_dev)
+        command = ' --use_' + self._args.gpu_backend + ' ' + str(self.__gpu_device)
         if self._args.gpu_dmabuf:
             command += ' --use_' + self._args.gpu_backend + '_dmabuf'
         if self._args.cuda_mem_type is not None:
@@ -306,7 +395,13 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
         Return:
             True if _preprocess() succeed.
         """
-        if not super()._preprocess() or not self._get_arguments_from_env():
+        if not super()._preprocess():
+            return False
+        if self._args.numa is not None:
+            self._result.set_return_code(ReturnCode.INVALID_ARGUMENT)
+            logger.error('Use RDMA mapping to set NUMA node - benchmark: {}.'.format(self._name))
+            return False
+        if not self._apply_rdma_mapping():
             return False
         if not self._validate_gpu_arguments():
             return False
@@ -325,18 +420,15 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
 
             if not self._bind_free_port():
                 return False
-            rdma_device = self._resolve_rdma_device()
-            if not rdma_device:
-                return False
-            numa_cores = get_numa_cores(self._args.numa)
-            if not numa_cores or len(numa_cores) < 2:
+            cpu_cores = self._get_cpu_cores()
+            if not cpu_cores or len(cpu_cores) < 2:
                 self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
-                logger.error('Getting numa core devices failure - benchmark: {}.'.format(self._name))
+                logger.error('Getting CPU core devices failure - benchmark: {}.'.format(self._name))
                 return False
             command = os.path.join(self._args.bin_dir, self._bin_name)
-            command += ' ' + str(numa_cores[-1]) + ' ' + str(numa_cores[-3 + int((len(numa_cores) < 4))])
+            command += ' ' + str(cpu_cores[-1]) + ' ' + str(cpu_cores[-3 + int((len(cpu_cores) < 4))])
             command += ' ' + os.path.join(self._args.bin_dir, self.__support_rdma_commands[rdma_command])
-            command += self._build_perftest_options(rdma_device)
+            command += self._build_perftest_options(self.__rdma_device)
             command += self._build_gpu_options()
             self._commands.append(command)
 

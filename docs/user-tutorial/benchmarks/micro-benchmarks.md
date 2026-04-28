@@ -460,12 +460,94 @@ Each benchmark run measures the GPU visible to the current process.
 `gpu-stream` reports `phase` and `function` metrics. `_ratio` and `block_*` metrics are removed.
 Bandwidth metrics are converted from BabelStream `max_mbytes_per_sec` by using `GB/s = MB/s / 1000`.
 
+### `rdma-loopback`
+
+#### Introduction
+
+Measure local RDMA loopback verbs bandwidth for InfiniBand or RoCE devices, performed by
+[OFED performance tests](https://github.com/linux-rdma/perftest).
+
+`rdma-loopback` uses a per-rank mapping to select the RDMA device and, optionally, GPU device and NUMA node.
+The RDMA field can be a device name or a global discovery index. GPU memory is disabled by default and can be
+enabled for CUDA or ROCm perftest builds.
+
+#### Parameters
+
+| Parameter               | Default   | Description                                                                 |
+|-------------------------|-----------|-----------------------------------------------------------------------------|
+| `--link_layer`          |           | Optional expected RDMA link layer: `infiniband` or `ethernet`.              |
+| `--rdma_mapping`        |           | Required per-rank mapping entries in `RDMA[:GPU[:NUMA]]` format. `RDMA` can be a device name or discovery index. |
+| `--commands`            | `write`   | RDMA commands to run: `write`, `read`, and/or `send`.                       |
+| `--msg_size`            |           | Message size in bytes. If unset, perftest runs all supported message sizes. |
+| `--duration`            | `0`       | Perftest duration in seconds. When greater than `0`, `--iters` is ignored.  |
+| `--iters`               | `20000`   | Number of perftest iterations when `--duration` is `0`.                     |
+| `--qp`                  |           | Number of queue pairs passed to perftest `-q`.                              |
+| `--bidirectional`       | `false`   | Measure bidirectional bandwidth.                                            |
+| `--gid_index`           | `0`       | GID index passed to perftest `-x`. RoCE commonly requires an explicit value. |
+| `--tclass`              |           | Traffic class passed to perftest `--tclass`.                                |
+| `--extra_perftest_args` |           | Extra arguments appended to the perftest command.                           |
+| `--gpu_backend`         | `none`    | GPU memory backend: `none`, `cuda`, or `rocm`.                              |
+| `--gpu_dmabuf`          | `false`   | Use GPU DMA-BUF with the selected GPU backend.                              |
+| `--cuda_mem_type`       |           | CUDA memory type passed to perftest. Valid only with `--gpu_backend cuda`.  |
+| `--gpu_touch`           |           | Touch GPU pages before testing: `once` or `infinite`.                       |
+
+The `--rdma_mapping` entry at `PROC_RANK` determines the current process binding. Supported forms are:
+
+| Form | Description |
+|------|-------------|
+| `mlx5_2` | RDMA device by name, no GPU, automatic CPU core selection. |
+| `2` | RDMA device by discovery index, no GPU, automatic CPU core selection. |
+| `mlx5_2:0` | RDMA device by name, GPU `0`, automatic CPU core selection. |
+| `2:0` | RDMA device by discovery index, GPU `0`, automatic CPU core selection. |
+| `mlx5_2:0:3` | RDMA device by name, GPU `0`, NUMA node `3`. |
+| `2:0:3` | RDMA device by discovery index, GPU `0`, NUMA node `3`. |
+| `mlx5_2::3` | RDMA device by name, no GPU, NUMA node `3`. |
+| `2::3` | RDMA device by discovery index, no GPU, NUMA node `3`. |
+
+When the RDMA field is numeric, it is resolved from the full RDMA device list. If `--link_layer` is set,
+the resolved device must match the expected link layer. For YAML configuration, quote each mapping entry because
+the format contains `:`:
+
+```yaml
+rdma-loopback:roce:
+  enable: false
+  modes:
+    - name: local
+      proc_num: 8
+      parallel: yes
+  parameters:
+    link_layer: ethernet
+    rdma_mapping:
+      - "mlx5_2:0:3"
+      - "mlx5_3:1:3"
+      - "mlx5_4:2:0"
+      - "mlx5_5:3:0"
+      - "mlx5_6:4:7"
+      - "mlx5_7:5:7"
+      - "mlx5_8:6:4"
+      - "mlx5_9:7:4"
+    gpu_backend: rocm
+    msg_size: 8388608
+    gid_index: 3
+    tclass: 96
+```
+
+#### Metrics
+
+| Name                                                     | Unit             | Description                                                        |
+|----------------------------------------------------------|------------------|--------------------------------------------------------------------|
+| rdma-loopback/ib_write_bw_${msg_size}:${rdma_device}     | bandwidth (GB/s) | RDMA loopback write bandwidth with given message size and device.  |
+| rdma-loopback/ib_read_bw_${msg_size}:${rdma_device}      | bandwidth (GB/s) | RDMA loopback read bandwidth with given message size and device.   |
+| rdma-loopback/ib_send_bw_${msg_size}:${rdma_device}      | bandwidth (GB/s) | RDMA loopback send bandwidth with given message size and device.   |
+
 ### `ib-loopback`
 
 #### Introduction
 
+`ib-loopback` is deprecated. Use `rdma-loopback` for new InfiniBand and RoCE loopback testing.
+
 Measure the InfiniBand loopback verbs bandwidth, performed by
-[OFED performance tests](https://github.com/linux-rdma/perftest/tree/7504ce48ac396a02f4d00de359257b2cb8458f06).
+[OFED performance tests](https://github.com/linux-rdma/perftest).
 
 #### Metrics
 

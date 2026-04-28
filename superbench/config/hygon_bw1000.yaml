@@ -451,15 +451,46 @@ superbench:
           proc_num: 8
           prefix: HIP_VISIBLE_DEVICES={proc_rank}
           parallel: no
-    ib-loopback:
+    rdma-loopback:ib:
       enable: false
       modes:
         - name: local
-          proc_num: 16
-          prefix: PROC_RANK={proc_rank} IB_DEVICES=0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7 numactl -N $(({proc_rank}/8)) -m $(({proc_rank}/8))
+          proc_num: 8
           parallel: no
       parameters:
+        link_layer: infiniband
+        rdma_mapping:
+          - "mlx5_2:0:3"
+          - "mlx5_3:1:3"
+          - "mlx5_4:2:0"
+          - "mlx5_5:3:0"
+          - "mlx5_6:4:7"
+          - "mlx5_7:5:7"
+          - "mlx5_8:6:4"
+          - "mlx5_9:7:4"
+        gpu_backend: rocm
         msg_size: 8388608
+    rdma-loopback:roce:
+      enable: false
+      modes:
+        - name: local
+          proc_num: 8
+          parallel: no
+      parameters:
+        link_layer: ethernet
+        rdma_mapping:
+          - "mlx5_2:0:3"
+          - "mlx5_3:1:3"
+          - "mlx5_4:2:0"
+          - "mlx5_5:3:0"
+          - "mlx5_6:4:7"
+          - "mlx5_7:5:7"
+          - "mlx5_8:6:4"
+          - "mlx5_9:7:4"
+        gpu_backend: rocm
+        msg_size: 8388608
+        gid_index: 3
+        tclass: 96
     disk-benchmark:
       enable: false
       modes:
