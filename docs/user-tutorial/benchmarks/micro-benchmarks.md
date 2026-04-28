@@ -508,6 +508,9 @@ When the RDMA field is numeric, it is resolved from the full RDMA device list. I
 the resolved device must match the expected link layer. For YAML configuration, quote each mapping entry because
 the format contains `:`:
 
+The RDMA field selects an RDMA device, not a device port. `rdma-loopback` currently uses the perftest default
+RDMA port.
+
 ```yaml
 rdma-loopback:roce:
   enable: false

@@ -130,6 +130,43 @@ class RdmaLoopbackBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         assert (command == expect_command)
         mock_rdma_devices.assert_any_call()
 
+        parameters = '--rdma_mapping 1::1 --iters 2000'
+        benchmark = benchmark_class(benchmark_name, parameters=parameters)
+        mock_rdma_devices.return_value = [
+            {
+                'device': 'mlx5_0',
+                'port': '1',
+                'link_layer': 'Ethernet',
+                'state': '4: ACTIVE',
+                'phys_state': '5: LinkUp',
+                'netdevs': ['eth0'],
+            },
+            {
+                'device': 'mlx5_0',
+                'port': '2',
+                'link_layer': 'Ethernet',
+                'state': '4: ACTIVE',
+                'phys_state': '5: LinkUp',
+                'netdevs': ['eth1'],
+            },
+            {
+                'device': 'mlx5_1',
+                'port': '1',
+                'link_layer': 'Ethernet',
+                'state': '4: ACTIVE',
+                'phys_state': '5: LinkUp',
+                'netdevs': ['eth2'],
+            },
+        ]
+        mock_numa_cores.return_value = [0, 1, 2, 3]
+        ret = benchmark._preprocess()
+        assert (ret)
+        port = benchmark._RdmaLoopbackBenchmark__sock_fds[-1].getsockname()[1]
+        expect_command = 'run_perftest_loopback 3 1 ' + benchmark._args.bin_dir + \
+            f'/ib_write_bw -a -F --iters=2000 -d mlx5_1 -p {port} -x 0 --report_gbits'
+        command = benchmark._bin_name + benchmark._commands[0].split(benchmark._bin_name)[1]
+        assert (command == expect_command)
+
     @decorator.load_data('tests/data/ib_loopback_8M_size.log')
     @mock.patch('superbench.benchmarks.micro_benchmarks.rdma_loopback_performance.get_numa_cores')
     @mock.patch('superbench.common.utils.network.get_rdma_devices')

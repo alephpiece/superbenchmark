@@ -181,35 +181,53 @@ class RdmaLoopbackBenchmark(MicroBenchmarkWithInvoke):
             entries += [entry.strip() for entry in mapping_arg.split(',') if entry.strip()]
         return entries
 
-    def _resolve_rdma_ref(self, rdma_ref):
-        """Resolve RDMA mapping reference to device name."""
-        if not rdma_ref.isdigit() and not self._args.link_layer:
-            return rdma_ref
-
+    def _get_rdma_devices(self):
+        """Get all discovered RDMA device-port entries."""
         try:
-            rdma_devices = network.get_rdma_devices()
+            return network.get_rdma_devices()
         except BaseException as e:
             self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
             logger.error('Getting RDMA devices failure - benchmark: {}, message: {}.'.format(self._name, str(e)))
             return None
 
-        rdma_device = None
-        if rdma_ref.isdigit():
-            rdma_index = int(rdma_ref)
-            if rdma_devices and 0 <= rdma_index < len(rdma_devices):
-                rdma_device = rdma_devices[rdma_index]
-        elif rdma_devices:
-            rdma_device = next((device for device in rdma_devices if device['device'] == rdma_ref), None)
+    def _get_unique_rdma_devices(self, rdma_devices):
+        """Deduplicate RDMA device-port entries by device name."""
+        rdma_devices_by_name = []
+        seen_devices = set()
+        for rdma_device in rdma_devices:
+            if rdma_device['device'] in seen_devices:
+                continue
+            rdma_devices_by_name.append(rdma_device)
+            seen_devices.add(rdma_device['device'])
+        return rdma_devices_by_name
 
+    def _find_rdma_device(self, rdma_ref, rdma_devices):
+        """Find an RDMA device entry by device name or global device index."""
+        if rdma_ref.isdigit():
+            rdma_devices_by_name = self._get_unique_rdma_devices(rdma_devices)
+            rdma_index = int(rdma_ref)
+            if 0 <= rdma_index < len(rdma_devices_by_name):
+                return rdma_devices_by_name[rdma_index]
+            return None
+        return next((device for device in rdma_devices if device['device'] == rdma_ref), None)
+
+    def _resolve_rdma_ref(self, rdma_ref):
+        """Resolve RDMA mapping reference to device name."""
+        if not rdma_ref.isdigit() and not self._args.link_layer:
+            return rdma_ref
+
+        rdma_devices = self._get_rdma_devices()
+        rdma_device = self._find_rdma_device(rdma_ref, rdma_devices) if rdma_devices else None
         if not rdma_device:
             self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
             logger.error(
                 'Getting RDMA devices failure - benchmark: {}, device: {}, devices: {}.'.format(
-                    self._name, rdma_ref, rdma_devices
+                    self._name, rdma_ref, self._get_unique_rdma_devices(rdma_devices or [])
                 )
             )
             return None
 
+        # TODO: Add per-port RDMA mapping and pass perftest -i/--ib-port when multi-port HCAs need it.
         if self._args.link_layer and rdma_device['link_layer'].lower() != self._args.link_layer:
             self._result.set_return_code(ReturnCode.MICROBENCHMARK_DEVICE_GETTING_FAILURE)
             logger.error(
