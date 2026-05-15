@@ -307,6 +307,19 @@ class SystemInfo():    # pragma: no cover
                     gpu_info[card][key] = value
         return gpu_info
 
+    def _get_hygon_driver_version(self):
+        """Get Hygon GPU driver version from hy-smi text output.
+
+        Returns:
+            str: Hygon GPU driver version.
+        """
+        output = self._run_cmd('hy-smi --showdriverversion')
+        for line in output.splitlines():
+            key, separator, value = line.partition(':')
+            if separator and key.strip() == 'Driver Version':
+                return value.strip()
+        return ''
+
     def get_gpu_hygon(self):
         """Get hygon gpu info."""
         gpu_dict = {
@@ -349,6 +362,11 @@ class SystemInfo():    # pragma: no cover
             gpu_dict['topo'] = self._run_cmd('hy-smi --showtopo')
         except Exception:
             logger.exception('Error: get hygon gpu topology info failed')
+
+        try:
+            gpu_dict['driver_version'] = self._get_hygon_driver_version()
+        except Exception:
+            logger.exception('Error: get hygon gpu driver version failed')
 
         gpu_dict['gpu_count'] = len(gpu_dict['rocm_info'])
         return gpu_dict
