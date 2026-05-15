@@ -166,7 +166,8 @@ setup(
     ],
     install_requires=[
         'ansible;os_name=="posix" and python_version>"3.10"',
-        'ansible_base>=2.10.9;os_name=="posix" and python_version<="3.10"',
+        'ansible-core>=2.17,<2.18;os_name=="posix" and python_version=="3.10"',
+        'ansible_base>=2.10.9;os_name=="posix" and python_version<"3.10"',
         'ansible_runner>=2.0.0rc1, <2.3.2;python_version<="3.10"',
         'ansible_runner;python_version>"3.10"',
         'colorlog>=6.7.0',
