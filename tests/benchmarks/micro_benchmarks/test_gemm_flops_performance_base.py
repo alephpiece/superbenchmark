@@ -85,15 +85,15 @@ def test_gemm_flops_performance_base():
     assert (benchmark.return_code == ReturnCode.SUCCESS)
     # Check command list
     expected_command = [
-        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp64_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision tf32_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision bf16_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision int8_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision int4_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"'
+        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp64_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision tf32_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision bf16_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision int8_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision int4_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"'
     ]
     for i in range(len(expected_command)):
         command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
@@ -116,9 +116,9 @@ def test_gemm_flops_performance_base():
     assert (benchmark.return_code == ReturnCode.SUCCESS)
     # Check command list
     expected_command = [
-        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 5"'
+        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 2"'
     ]
     for i in range(len(expected_command)):
         command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
@@ -139,9 +139,9 @@ def test_gemm_flops_performance_base():
     assert (benchmark._benchmark_type == BenchmarkType.MICRO)
     assert (benchmark.run() is True)
     expected_command = [
-        'echo "--precision fp32 --m 4096 --n 4096 --k 4096 --num_warmup 5"',
-        'echo "--precision fp32 --m 8192 --n 4096 --k 8192 --num_warmup 5"',
-        'echo "--precision fp32 --m 16384 --n 4096 --k 8192 --num_warmup 5"',
+        'echo "--precision fp32 --m 4096 --n 4096 --k 4096 --num_warmup 2"',
+        'echo "--precision fp32 --m 8192 --n 4096 --k 8192 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 4096 --k 8192 --num_warmup 2"',
     ]
     assert (len(benchmark._commands) == len(expected_command))
     for i in range(len(expected_command)):

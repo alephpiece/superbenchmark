@@ -82,7 +82,7 @@ class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
         self._parser.add_argument(
             '--num_warmup',
             type=int,
-            default=5,
+            default=2,
             required=False,
             help='The number of warmup step.',
         )
