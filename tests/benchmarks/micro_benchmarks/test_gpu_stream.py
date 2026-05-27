@@ -67,6 +67,10 @@ class GpuStreamBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
         """Test gpu-stream benchmark command generation, ROCm case."""
         self._test_gpu_stream_command_generation(Platform.ROCM)
 
+    def test_gpu_stream_command_generation_dtk(self):
+        """Test gpu-stream benchmark command generation, DTK case."""
+        self._test_gpu_stream_command_generation(Platform.DTK)
+
     def _test_gpu_stream_result_parsing(self, platform):
         """Test gpu-stream benchmark result parsing."""
         benchmark_name = 'gpu-stream'
@@ -133,3 +137,7 @@ class GpuStreamBenchmarkTest(BenchmarkTestCase, unittest.TestCase):
     def test_gpu_stream_result_parsing_rocm(self):
         """Test gpu-stream benchmark result parsing, ROCm case."""
         self._test_gpu_stream_result_parsing(Platform.ROCM)
+
+    def test_gpu_stream_result_parsing_dtk(self):
+        """Test gpu-stream benchmark result parsing, DTK case."""
+        self._test_gpu_stream_result_parsing(Platform.DTK)

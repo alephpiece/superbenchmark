@@ -254,3 +254,4 @@ class GpuStreamBenchmark(MicroBenchmarkWithInvoke):
 
 
 BenchmarkRegistry.register_benchmark('gpu-stream', GpuStreamBenchmark, platform=Platform.ROCM)
+BenchmarkRegistry.register_benchmark('gpu-stream', GpuStreamBenchmark, platform=Platform.DTK)
