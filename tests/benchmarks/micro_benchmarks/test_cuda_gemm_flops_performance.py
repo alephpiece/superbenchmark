@@ -87,9 +87,22 @@ Problem,Provider,OperationKind,Operation,Disposition,Status,gemm_kind,m,n,k,A,B,
         assert (benchmark._process_raw_result(1, raw_output_tf32_tc))
         assert (benchmark._process_raw_result(2, raw_output_fp16_tc))
 
-        assert (benchmark.result['fp32_flops'][0] == 18369.7)
-        assert (benchmark.result['tf32_tc_flops'][0] == 128677)
-        assert (benchmark.result['fp16_tc_flops'][0] == 281048)
+        assert (benchmark.result['fp32_m2048_n1024_k512_flops'][0] == 18369.7)
+        assert (benchmark.result['tf32_tc_m2048_n1024_k512_flops'][0] == 128677)
+        assert (benchmark.result['fp16_tc_m2048_n1024_k512_flops'][0] == 281048)
 
         # Negative case - Add invalid raw output.
         assert (benchmark._process_raw_result(3, 'Invalid raw output') is False)
+
+        benchmark = benchmark_class(
+            benchmark_name,
+            parameters='--num_warmup 200 --precision fp32 --shapes 4096,4096,4096 8192:16384:2,4096,8192'
+        )
+        ret = benchmark._preprocess()
+        if dm.device_manager.get_device_compute_capability() in benchmark._CudaGemmFlopsBenchmark__kernel_map:
+            assert (ret is True)
+            assert (len(benchmark._commands) == 3)
+            expected_shapes = [(4096, 4096, 4096), (8192, 4096, 8192), (16384, 4096, 8192)]
+            assert (
+                [shape for _, *shape in benchmark._precision_shape_in_commands] == [list(x) for x in expected_shapes]
+            )

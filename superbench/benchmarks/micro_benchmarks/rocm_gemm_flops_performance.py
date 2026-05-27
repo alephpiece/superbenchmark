@@ -109,17 +109,20 @@ class RocmGemmFlopsBenchmark(GemmFlopsBenchmark):
         if not super()._preprocess():
             return False
 
+        self._precision_shape_in_commands = []
         for p in self._precision_need_to_run:
-            command = os.path.join(self._args.bin_dir, self._bin_name)
-            command += ' ' + self.__precision_and_kernel_map[p]
-            command += ' --transposeA {} --transposeB {}'.format(self._args.transposeA, self._args.transposeB)
-            command += ' -m {} -n {} -k {}'.format(self._args.m, self._args.n, self._args.k)
-            command += ' --alpha {} --beta {}'.format(self._args.alpha, self._args.beta)
-            command += ' --lda {} --ldb {} --ldc {} --ldd {}'.format(
-                self._args.lda, self._args.ldb, self._args.ldc, self._args.ldd
-            )
-            command += ' --initialization {}'.format(self._args.initialization)
-            self._commands.append(command)
+            for m, n, k in self._shapes_to_run:
+                command = os.path.join(self._args.bin_dir, self._bin_name)
+                command += ' ' + self.__precision_and_kernel_map[p]
+                command += ' --transposeA {} --transposeB {}'.format(self._args.transposeA, self._args.transposeB)
+                command += ' -m {} -n {} -k {}'.format(m, n, k)
+                command += ' --alpha {} --beta {}'.format(self._args.alpha, self._args.beta)
+                command += ' --lda {} --ldb {} --ldc {} --ldd {}'.format(
+                    self._args.lda, self._args.ldb, self._args.ldc, self._args.ldd
+                )
+                command += ' --initialization {}'.format(self._args.initialization)
+                self._commands.append(command)
+                self._precision_shape_in_commands.append((p, m, n, k))
 
         return True
 
@@ -135,7 +138,7 @@ class RocmGemmFlopsBenchmark(GemmFlopsBenchmark):
         Return:
             True if the raw output string is valid and result can be extracted.
         """
-        precision = self._precision_need_to_run[cmd_idx]
+        precision, m, n, k = self._precision_shape_in_commands[cmd_idx]
         self._result.add_raw_data('raw_output_' + precision, raw_output, self._args.log_raw_data)
 
         content = raw_output.splitlines()
@@ -163,7 +166,7 @@ class RocmGemmFlopsBenchmark(GemmFlopsBenchmark):
             )
             return False
 
-        self._result.add_result(self._metric_map[precision], gflops)
+        self._result.add_result(self._get_metric_name(precision, m, n, k), gflops)
 
         return True
 

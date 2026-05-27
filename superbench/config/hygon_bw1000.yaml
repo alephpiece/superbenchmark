@@ -40,9 +40,8 @@ superbench:
     gemm-flops:
       <<: *default_local_mode
       parameters:
-        m: 7680
-        n: 8192
-        k: 8192
+        shapes:
+          - 7680,8192,8192
     hipblaslt-gemm:
       enable: true
       modes:

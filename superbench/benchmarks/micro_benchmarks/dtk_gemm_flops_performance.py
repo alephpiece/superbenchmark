@@ -262,46 +262,49 @@ class DtkGemmFlopsBenchmark(GemmFlopsBenchmark):
         if not super()._preprocess():
             return False
 
+        self._precision_shape_in_commands = []
         for p in self._precision_need_to_run:
-            command = os.path.join(self._args.bin_dir, self._bin_name)
-            command += ' ' + self.__precision_and_kernel_map[p]
-            command += ' --iters {}'.format(self._args.iterations)
-            command += ' --cold_iters {}'.format(self._args.num_warmup)
-            command += ' --transposeA {} --transposeB {}'.format(self._args.transposeA, self._args.transposeB)
-            command += ' --side {} --uplo {} --diag {}'.format(self._args.side, self._args.uplo, self._args.diag)
-            command += ' -m {} -n {} -k {}'.format(self._args.m, self._args.n, self._args.k)
-            command += ' --alpha {} --beta {}'.format(self._args.alpha, self._args.beta)
-            command += ' --kl {} --ku {}'.format(self._args.kl, self._args.ku)
-            command += ' --lda {} --ldb {} --ldc {} --ldd {}'.format(
-                self._args.lda, self._args.ldb, self._args.ldc, self._args.ldd
-            )
-            if self._args.any_stride:
-                command += ' --any_stride'
-            if self._args.stride_a is not None:
-                command += ' --stride_a {}'.format(self._args.stride_a)
-            if self._args.stride_b is not None:
-                command += ' --stride_b {}'.format(self._args.stride_b)
-            if self._args.stride_c is not None:
-                command += ' --stride_c {}'.format(self._args.stride_c)
-            if self._args.stride_d is not None:
-                command += ' --stride_d {}'.format(self._args.stride_d)
-            command += ' --verify {}'.format(self._args.verify)
-            if self._args.outofplace:
-                command += ' --outofplace'
-            command += ' --algo {}'.format(self._args.algo)
-            command += ' --solution_index {}'.format(self._args.solution_index)
-            command += ' --flags {}'.format(self._args.flags)
-            command += ' --workspace {}'.format(self._args.workspace)
-            command += ' --math_mode {}'.format(self._args.math_mode)
-            command += ' --flush_batch_count {}'.format(self._args.flush_batch_count)
-            command += ' --flush_memory_size {}'.format(self._args.flush_memory_size)
-            if self._args.atomics_allowed:
-                command += ' --atomics_allowed'
-            if self._args.atomics_not_allowed:
-                command += ' --atomics_not_allowed'
-            command += ' --device {}'.format(self._args.device)
-            command += ' --initialization {}'.format(self._args.initialization)
-            self._commands.append(command)
+            for m, n, k in self._shapes_to_run:
+                command = os.path.join(self._args.bin_dir, self._bin_name)
+                command += ' ' + self.__precision_and_kernel_map[p]
+                command += ' --iters {}'.format(self._args.iterations)
+                command += ' --cold_iters {}'.format(self._args.num_warmup)
+                command += ' --transposeA {} --transposeB {}'.format(self._args.transposeA, self._args.transposeB)
+                command += ' --side {} --uplo {} --diag {}'.format(self._args.side, self._args.uplo, self._args.diag)
+                command += ' -m {} -n {} -k {}'.format(m, n, k)
+                command += ' --alpha {} --beta {}'.format(self._args.alpha, self._args.beta)
+                command += ' --kl {} --ku {}'.format(self._args.kl, self._args.ku)
+                command += ' --lda {} --ldb {} --ldc {} --ldd {}'.format(
+                    self._args.lda, self._args.ldb, self._args.ldc, self._args.ldd
+                )
+                if self._args.any_stride:
+                    command += ' --any_stride'
+                if self._args.stride_a is not None:
+                    command += ' --stride_a {}'.format(self._args.stride_a)
+                if self._args.stride_b is not None:
+                    command += ' --stride_b {}'.format(self._args.stride_b)
+                if self._args.stride_c is not None:
+                    command += ' --stride_c {}'.format(self._args.stride_c)
+                if self._args.stride_d is not None:
+                    command += ' --stride_d {}'.format(self._args.stride_d)
+                command += ' --verify {}'.format(self._args.verify)
+                if self._args.outofplace:
+                    command += ' --outofplace'
+                command += ' --algo {}'.format(self._args.algo)
+                command += ' --solution_index {}'.format(self._args.solution_index)
+                command += ' --flags {}'.format(self._args.flags)
+                command += ' --workspace {}'.format(self._args.workspace)
+                command += ' --math_mode {}'.format(self._args.math_mode)
+                command += ' --flush_batch_count {}'.format(self._args.flush_batch_count)
+                command += ' --flush_memory_size {}'.format(self._args.flush_memory_size)
+                if self._args.atomics_allowed:
+                    command += ' --atomics_allowed'
+                if self._args.atomics_not_allowed:
+                    command += ' --atomics_not_allowed'
+                command += ' --device {}'.format(self._args.device)
+                command += ' --initialization {}'.format(self._args.initialization)
+                self._commands.append(command)
+                self._precision_shape_in_commands.append((p, m, n, k))
 
         return True
 
@@ -317,7 +320,7 @@ class DtkGemmFlopsBenchmark(GemmFlopsBenchmark):
         Return:
             True if the raw output string is valid and result can be extracted.
         """
-        precision = self._precision_need_to_run[cmd_idx]
+        precision, m, n, k = self._precision_shape_in_commands[cmd_idx]
         self._result.add_raw_data('raw_output_' + precision, raw_output, self._args.log_raw_data)
 
         content = raw_output.splitlines()
@@ -345,7 +348,7 @@ class DtkGemmFlopsBenchmark(GemmFlopsBenchmark):
             )
             return False
 
-        self._result.add_result(self._metric_map[precision], gflops)
+        self._result.add_result(self._get_metric_name(precision, m, n, k), gflops)
 
         return True
 
