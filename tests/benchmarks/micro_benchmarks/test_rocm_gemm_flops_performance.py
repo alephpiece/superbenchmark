@@ -95,8 +95,7 @@ T,N,7680,8192,8192,1,8416,0,8416,8416,8416,1, 162675, 6336.5
         assert (benchmark._process_raw_result(4, 'Invalid raw output') is False)
 
         benchmark = benchmark_class(
-            benchmark_name,
-            parameters='--precision fp32_xdlops --shapes 4096,4096,4096 8192:16384:2,4096,8192'
+            benchmark_name, parameters='--precision fp32_xdlops --shapes 4096,4096,4096 8192:16384:2,4096,8192'
         )
         assert (benchmark._preprocess() is True)
         assert (len(benchmark._commands) == 3)

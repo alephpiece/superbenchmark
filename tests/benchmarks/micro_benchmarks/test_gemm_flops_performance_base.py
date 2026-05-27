@@ -100,15 +100,10 @@ def test_gemm_flops_performance_base():
         assert (command == expected_command[i])
     for i, metric in enumerate(
         [
-            'fp64_m16384_n16384_k16384_flops',
-            'fp32_m16384_n16384_k16384_flops',
-            'fp16_m16384_n16384_k16384_flops',
-            'fp64_tc_m16384_n16384_k16384_flops',
-            'tf32_tc_m16384_n16384_k16384_flops',
-            'bf16_tc_m16384_n16384_k16384_flops',
-            'fp16_tc_m16384_n16384_k16384_flops',
-            'int8_tc_m16384_n16384_k16384_iops',
-            'int4_tc_m16384_n16384_k16384_iops'
+            'fp64_m16384_n16384_k16384_flops', 'fp32_m16384_n16384_k16384_flops', 'fp16_m16384_n16384_k16384_flops',
+            'fp64_tc_m16384_n16384_k16384_flops', 'tf32_tc_m16384_n16384_k16384_flops',
+            'bf16_tc_m16384_n16384_k16384_flops', 'fp16_tc_m16384_n16384_k16384_flops',
+            'int8_tc_m16384_n16384_k16384_iops', 'int4_tc_m16384_n16384_k16384_iops'
         ]
     ):
         assert (metric in benchmark.result)
@@ -129,11 +124,7 @@ def test_gemm_flops_performance_base():
         command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
         assert (command == expected_command[i])
     for i, metric in enumerate(
-        [
-            'fp64_m16384_n16384_k16384_flops',
-            'fp32_m16384_n16384_k16384_flops',
-            'fp16_m16384_n16384_k16384_flops'
-        ]
+        ['fp64_m16384_n16384_k16384_flops', 'fp32_m16384_n16384_k16384_flops', 'fp16_m16384_n16384_k16384_flops']
     ):
         assert (metric in benchmark.result)
         assert (len(benchmark.result[metric]) == 1)
@@ -143,8 +134,7 @@ def test_gemm_flops_performance_base():
     assert (benchmark.run() is True)
 
     benchmark = FakeGemmFlopsBenchmark(
-        'fake',
-        parameters='--precision fp32 --shapes 4096,4096,4096 8192:16384:2,4096,8192'
+        'fake', parameters='--precision fp32 --shapes 4096,4096,4096 8192:16384:2,4096,8192'
     )
     assert (benchmark._benchmark_type == BenchmarkType.MICRO)
     assert (benchmark.run() is True)
