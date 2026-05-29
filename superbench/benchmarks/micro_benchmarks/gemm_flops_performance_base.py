@@ -3,9 +3,44 @@
 
 """Module of the FLOPs performance benchmark base class."""
 
+import itertools
+
 from superbench.common.utils import logger
 from superbench.benchmarks import ReturnCode
 from superbench.benchmarks.micro_benchmarks import MicroBenchmarkWithInvoke
+
+
+def mrange(start, stop=-1, factor=2, symbol='x'):
+    """Range constructor with multiplication or addition factor."""
+    if stop == -1:
+        yield start
+        return
+
+    if symbol == 'x':
+        while True:
+            yield start
+            start *= factor
+            if start > stop or start == 0 or factor < 2:
+                break
+    elif symbol == '+':
+        while True:
+            yield start
+            start += factor
+            if start > stop or start == 0 or factor < 1:
+                break
+    else:
+        raise ValueError(f'Invalid symbol {symbol}.')
+
+
+def validate_mrange(string):
+    """Validate mrange string in format start[[:stop]:factor]."""
+    nums = string.split(':')
+    if len(nums) > 3:
+        return False
+
+    if len(nums) < 3:
+        return all(x.isdigit() for x in nums)
+    return nums[0].isdigit() and nums[1].isdigit() and (nums[2].lstrip('+').isdigit() or nums[2].lstrip('x').isdigit())
 
 
 class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
@@ -23,6 +58,7 @@ class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
             'fp64', 'fp32', 'fp16', 'fp64_tc', 'tf32_tc', 'bf16_tc', 'fp16_tc', 'int8_tc', 'int4_tc'
         ]
         self._precision_need_to_run = list()
+        self._shapes_to_run = list()
         self._metric_map = {
             'fp64': 'fp64_flops',
             'fp32': 'fp32_flops',
@@ -46,7 +82,7 @@ class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
         self._parser.add_argument(
             '--num_warmup',
             type=int,
-            default=5,
+            default=2,
             required=False,
             help='The number of warmup step.',
         )
@@ -70,6 +106,13 @@ class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
             default=16384,
             required=False,
             help='The M dim of matmul (N, K) * (K, M).',
+        )
+        self._parser.add_argument(
+            '--shapes',
+            type=str,
+            nargs='+',
+            default=list(),
+            help='Shapes in m,n,k format. Support format start:stop:factor, e.g., 4096:32768:2.',
         )
         self._parser.add_argument(
             '--precision',
@@ -106,4 +149,31 @@ class GemmFlopsBenchmark(MicroBenchmarkWithInvoke):
             self._result.set_return_code(ReturnCode.NO_SUPPORTED_PRECISION)
             return False
 
+        shapes = self._args.shapes or [f'{self._args.m},{self._args.n},{self._args.k}']
+        for shape in shapes:
+            shape_list = shape.replace(',', ' ').split()
+            if len(shape_list) != 3 or not all(validate_mrange(x) for x in shape_list):
+                logger.error(f'Invalid shape - benchmark: {self._name}, shape: {shape}.')
+                return False
+
+            for m, n, k in itertools.product(
+                *map(
+                    lambda dim: mrange(
+                        *map(lambda value: int(value.lstrip('+').lstrip('x')), dim.split(':')),
+                        symbol=dim.split(':')[2][0]
+                        if len(dim.split(':')) == 3 and any([operator in dim for operator in ['+', 'x']]) else 'x'
+                    ), shape_list
+                )
+            ):
+                self._shapes_to_run.append((m, n, k))
+
         return True
+
+    def _get_metric_name(self, precision, m, n, k):
+        """Build metric name with precision and GEMM shape."""
+        metric = self._metric_map[precision]
+        if metric.endswith('_flops'):
+            return f'{metric[:-len("_flops")]}_m{m}_n{n}_k{k}_flops'
+        if metric.endswith('_iops'):
+            return f'{metric[:-len("_iops")]}_m{m}_n{n}_k{k}_iops'
+        return f'{metric}_m{m}_n{n}_k{k}'

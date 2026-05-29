@@ -31,14 +31,17 @@ class FakeGemmFlopsBenchmark(GemmFlopsBenchmark):
             return False
 
         # Check the arguments and generate the commands
+        self._precision_shape_in_commands = []
         for precision in self._precision_need_to_run:
-            command = os.path.join(self._args.bin_dir, self._bin_name)
-            command += ' "--precision ' + precision
-            command += ' --m ' + str(self._args.m)
-            command += ' --n ' + str(self._args.n)
-            command += ' --k ' + str(self._args.k)
-            command += ' --num_warmup ' + str(self._args.num_warmup) + '"'
-            self._commands.append(command)
+            for m, n, k in self._shapes_to_run:
+                command = os.path.join(self._args.bin_dir, self._bin_name)
+                command += ' "--precision ' + precision
+                command += ' --m ' + str(m)
+                command += ' --n ' + str(n)
+                command += ' --k ' + str(k)
+                command += ' --num_warmup ' + str(self._args.num_warmup) + '"'
+                self._commands.append(command)
+                self._precision_shape_in_commands.append((precision, m, n, k))
 
         return True
 
@@ -61,9 +64,10 @@ class FakeGemmFlopsBenchmark(GemmFlopsBenchmark):
             for param in params[1:]:
                 key_value = param.split()
                 if key_value[0] == 'precision':
-                    if key_value[1] != self._precision_need_to_run[cmd_idx]:
+                    if key_value[1] != self._precision_shape_in_commands[cmd_idx][0]:
                         return False
-            metric = self._precision_need_to_run[cmd_idx]
+            precision, m, n, k = self._precision_shape_in_commands[cmd_idx]
+            metric = self._get_metric_name(precision, m, n, k)
         except BaseException:
             return False
 
@@ -81,21 +85,26 @@ def test_gemm_flops_performance_base():
     assert (benchmark.return_code == ReturnCode.SUCCESS)
     # Check command list
     expected_command = [
-        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp64_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision tf32_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision bf16_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision int8_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision int4_tc --m 16384 --n 16384 --k 16384 --num_warmup 5"'
+        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp64_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision tf32_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision bf16_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision int8_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision int4_tc --m 16384 --n 16384 --k 16384 --num_warmup 2"'
     ]
     for i in range(len(expected_command)):
         command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
         assert (command == expected_command[i])
     for i, metric in enumerate(
-        ['fp64', 'fp32', 'fp16', 'fp64_tc', 'tf32_tc', 'bf16_tc', 'fp16_tc', 'int8_tc', 'int4_tc']
+        [
+            'fp64_m16384_n16384_k16384_flops', 'fp32_m16384_n16384_k16384_flops', 'fp16_m16384_n16384_k16384_flops',
+            'fp64_tc_m16384_n16384_k16384_flops', 'tf32_tc_m16384_n16384_k16384_flops',
+            'bf16_tc_m16384_n16384_k16384_flops', 'fp16_tc_m16384_n16384_k16384_flops',
+            'int8_tc_m16384_n16384_k16384_iops', 'int4_tc_m16384_n16384_k16384_iops'
+        ]
     ):
         assert (metric in benchmark.result)
         assert (len(benchmark.result[metric]) == 1)
@@ -107,14 +116,16 @@ def test_gemm_flops_performance_base():
     assert (benchmark.return_code == ReturnCode.SUCCESS)
     # Check command list
     expected_command = [
-        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 5"',
-        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 5"'
+        'echo "--precision fp64 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 16384 --k 16384 --num_warmup 2"',
+        'echo "--precision fp16 --m 16384 --n 16384 --k 16384 --num_warmup 2"'
     ]
     for i in range(len(expected_command)):
         command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
         assert (command == expected_command[i])
-    for i, metric in enumerate(['fp64', 'fp32', 'fp16']):
+    for i, metric in enumerate(
+        ['fp64_m16384_n16384_k16384_flops', 'fp32_m16384_n16384_k16384_flops', 'fp16_m16384_n16384_k16384_flops']
+    ):
         assert (metric in benchmark.result)
         assert (len(benchmark.result[metric]) == 1)
 
@@ -122,8 +133,27 @@ def test_gemm_flops_performance_base():
     assert (benchmark._benchmark_type == BenchmarkType.MICRO)
     assert (benchmark.run() is True)
 
+    benchmark = FakeGemmFlopsBenchmark(
+        'fake', parameters='--precision fp32 --shapes 4096,4096,4096 8192:16384:2,4096,8192'
+    )
+    assert (benchmark._benchmark_type == BenchmarkType.MICRO)
+    assert (benchmark.run() is True)
+    expected_command = [
+        'echo "--precision fp32 --m 4096 --n 4096 --k 4096 --num_warmup 2"',
+        'echo "--precision fp32 --m 8192 --n 4096 --k 8192 --num_warmup 2"',
+        'echo "--precision fp32 --m 16384 --n 4096 --k 8192 --num_warmup 2"',
+    ]
+    assert (len(benchmark._commands) == len(expected_command))
+    for i in range(len(expected_command)):
+        command = benchmark._bin_name + benchmark._commands[i].split(benchmark._bin_name)[1]
+        assert (command == expected_command[i])
+
     # Negative case - INVALID_ARGUMENT.
     benchmark = FakeGemmFlopsBenchmark('fake', parameters='--precision bf64')
     assert (benchmark._benchmark_type == BenchmarkType.MICRO)
     assert (benchmark.run() is False)
     assert (benchmark.return_code == ReturnCode.NO_SUPPORTED_PRECISION)
+
+    benchmark = FakeGemmFlopsBenchmark('fake', parameters='--shapes 4096,4096')
+    assert (benchmark._benchmark_type == BenchmarkType.MICRO)
+    assert (benchmark.run() is False)

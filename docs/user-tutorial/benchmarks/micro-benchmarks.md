@@ -29,24 +29,25 @@ host-side dispatch overhead, steady-state launch throughput, and device-side lau
 Measure the GPU GEMM FLOPS for different float and int data types, with or without Tensor Core (XDLOPS),
 performed by NVIDIA [cutlass](https://github.com/NVIDIA/cutlass/tree/ccb697bac77fcc898e9c897b2c90aa5b60ac72fb)
 or AMD [rocblas-bench](https://github.com/ROCmSoftwarePlatform/rocBLAS/tree/develop/clients/benchmarks).
+The benchmark supports one or more GEMM shapes in `m,n,k` format.
 
 #### Metrics
 
 | Name                         | Unit           | Description                                             |
 |------------------------------|----------------|---------------------------------------------------------|
-| gemm-flops/fp64_flops        | FLOPS (GFLOPS) | GEMM float64 peak FLOPS.                                |
-| gemm-flops/fp32_flops        | FLOPS (GFLOPS) | GEMM float32 peak FLOPS.                                |
-| gemm-flops/fp16_flops        | FLOPS (GFLOPS) | GEMM float16 peak FLOPS.                                |
-| gemm-flops/fp64_tc_flops     | FLOPS (GFLOPS) | GEMM float64 peak FLOPS with NVIDIA Tensor Core.        |
-| gemm-flops/tf32_tc_flops     | FLOPS (GFLOPS) | GEMM tensor-float32 peak FLOPS with NVIDIA Tensor Core. |
-| gemm-flops/fp16_tc_flops     | FLOPS (GFLOPS) | GEMM float16 peak FLOPS with NVIDIA Tensor Core.        |
-| gemm-flops/bf16_tc_flops     | FLOPS (GFLOPS) | GEMM bfloat16 peak FLOPS with NVIDIA Tensor Core.       |
-| gemm-flops/int8_tc_iops      | IOPS (GIOPS)   | GEMM int8 peak IOPS with NVIDIA Tensor Core.            |
-| gemm-flops/int4_tc_iops      | IOPS (GIOPS)   | GEMM int4 peak IOPS with NVIDIA Tensor Core.            |
-| gemm-flops/fp32_xdlops_flops | FLOPS (GFLOPS) | GEMM tensor-float32 peak FLOPS with AMD XDLOPS.         |
-| gemm-flops/fp16_xdlops_flops | FLOPS (GFLOPS) | GEMM float16 peak FLOPS with AMD XDLOPS.                |
-| gemm-flops/bf16_xdlops_flops | FLOPS (GFLOPS) | GEMM bfloat16 peak FLOPS with AMD XDLOPS.               |
-| gemm-flops/int8_xdlops_iops  | IOPS (GIOPS)   | GEMM int8 peak IOPS with AMD XDLOPS.                    |
+| gemm-flops/fp64_m${m}_n${n}_k${k}_flops        | FLOPS (GFLOPS) | GEMM float64 peak FLOPS.                                |
+| gemm-flops/fp32_m${m}_n${n}_k${k}_flops        | FLOPS (GFLOPS) | GEMM float32 peak FLOPS.                                |
+| gemm-flops/fp16_m${m}_n${n}_k${k}_flops        | FLOPS (GFLOPS) | GEMM float16 peak FLOPS.                                |
+| gemm-flops/fp64_tc_m${m}_n${n}_k${k}_flops     | FLOPS (GFLOPS) | GEMM float64 peak FLOPS with NVIDIA Tensor Core.        |
+| gemm-flops/tf32_tc_m${m}_n${n}_k${k}_flops     | FLOPS (GFLOPS) | GEMM tensor-float32 peak FLOPS with NVIDIA Tensor Core. |
+| gemm-flops/fp16_tc_m${m}_n${n}_k${k}_flops     | FLOPS (GFLOPS) | GEMM float16 peak FLOPS with NVIDIA Tensor Core.        |
+| gemm-flops/bf16_tc_m${m}_n${n}_k${k}_flops     | FLOPS (GFLOPS) | GEMM bfloat16 peak FLOPS with NVIDIA Tensor Core.       |
+| gemm-flops/int8_tc_m${m}_n${n}_k${k}_iops      | IOPS (GIOPS)   | GEMM int8 peak IOPS with NVIDIA Tensor Core.            |
+| gemm-flops/int4_tc_m${m}_n${n}_k${k}_iops      | IOPS (GIOPS)   | GEMM int4 peak IOPS with NVIDIA Tensor Core.            |
+| gemm-flops/fp32_xdlops_m${m}_n${n}_k${k}_flops | FLOPS (GFLOPS) | GEMM tensor-float32 peak FLOPS with AMD XDLOPS.         |
+| gemm-flops/fp16_xdlops_m${m}_n${n}_k${k}_flops | FLOPS (GFLOPS) | GEMM float16 peak FLOPS with AMD XDLOPS.                |
+| gemm-flops/bf16_xdlops_m${m}_n${n}_k${k}_flops | FLOPS (GFLOPS) | GEMM bfloat16 peak FLOPS with AMD XDLOPS.               |
+| gemm-flops/int8_xdlops_m${m}_n${n}_k${k}_iops  | IOPS (GIOPS)   | GEMM int8 peak IOPS with AMD XDLOPS.                    |
 
 ### `matmul`
 

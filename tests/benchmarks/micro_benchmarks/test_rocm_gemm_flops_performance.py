@@ -85,11 +85,20 @@ T,N,7680,8192,8192,1,8416,0,8416,8416,8416,1, 162675, 6336.5
         assert (benchmark._process_raw_result(3, raw_output_BF16_X))
         assert (benchmark._process_raw_result(4, raw_output_INT8_X))
 
-        assert (benchmark.result['fp64_flops'][0] == 10037.5)
-        assert (benchmark.result['fp32_xdlops_flops'][0] == 39441.6)
-        assert (benchmark.result['fp16_xdlops_flops'][0] == 153728)
-        assert (benchmark.result['bf16_xdlops_flops'][0] == 81374.3)
-        assert (benchmark.result['int8_xdlops_iops'][0] == 162675)
+        assert (benchmark.result['fp64_m7680_n8192_k8192_flops'][0] == 10037.5)
+        assert (benchmark.result['fp32_xdlops_m7680_n8192_k8192_flops'][0] == 39441.6)
+        assert (benchmark.result['fp16_xdlops_m7680_n8192_k8192_flops'][0] == 153728)
+        assert (benchmark.result['bf16_xdlops_m7680_n8192_k8192_flops'][0] == 81374.3)
+        assert (benchmark.result['int8_xdlops_m7680_n8192_k8192_iops'][0] == 162675)
 
         # Negative case - Add invalid raw output.
         assert (benchmark._process_raw_result(4, 'Invalid raw output') is False)
+
+        benchmark = benchmark_class(
+            benchmark_name, parameters='--precision fp32_xdlops --shapes 4096,4096,4096 8192:16384:2,4096,8192'
+        )
+        assert (benchmark._preprocess() is True)
+        assert (len(benchmark._commands) == 3)
+
+        expected_shapes = [(4096, 4096, 4096), (8192, 4096, 8192), (16384, 4096, 8192)]
+        assert ([shape for _, *shape in benchmark._precision_shape_in_commands] == [list(x) for x in expected_shapes])

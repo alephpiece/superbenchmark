@@ -92,15 +92,18 @@ class CudaGemmFlopsBenchmark(GemmFlopsBenchmark):
         if not super()._preprocess():
             return False
 
+        self._precision_shape_in_commands = []
         for p in self._precision_need_to_run:
-            command = os.path.join(self._args.bin_dir, self._bin_name)
-            command += (' --warmup-iterations=' + str(self._args.num_warmup))
-            command += (' --operation=gemm')
-            command += (' --n=' + str(self._args.n))
-            command += (' --k=' + str(self._args.k))
-            command += (' --m=' + str(self._args.m))
-            command += (' --kernels=' + self.__kernel_map[capability][p])
-            self._commands.append(command)
+            for m, n, k in self._shapes_to_run:
+                command = os.path.join(self._args.bin_dir, self._bin_name)
+                command += (' --warmup-iterations=' + str(self._args.num_warmup))
+                command += (' --operation=gemm')
+                command += (' --n=' + str(n))
+                command += (' --k=' + str(k))
+                command += (' --m=' + str(m))
+                command += (' --kernels=' + self.__kernel_map[capability][p])
+                self._commands.append(command)
+                self._precision_shape_in_commands.append((p, m, n, k))
 
         return True
 
@@ -116,7 +119,7 @@ class CudaGemmFlopsBenchmark(GemmFlopsBenchmark):
         Return:
             True if the raw output string is valid and result can be extracted.
         """
-        precision = self._precision_need_to_run[cmd_idx]
+        precision, m, n, k = self._precision_shape_in_commands[cmd_idx]
         self._result.add_raw_data('raw_output_' + precision, raw_output, self._args.log_raw_data)
 
         valid = True
@@ -138,7 +141,7 @@ class CudaGemmFlopsBenchmark(GemmFlopsBenchmark):
                 )
                 return False
 
-        self._result.add_result(self._metric_map[precision], max(flops))
+        self._result.add_result(self._get_metric_name(precision, m, n, k), max(flops))
 
         return True
 
