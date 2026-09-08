@@ -34,14 +34,33 @@ superbench:
       model_action: [train]
       pin_memory: yes
       num_workers: 0
+    hpl_multi_gpu_mode: &hpl_multi_gpu_mode
+      name: mpi
+      node_num: 1
+      bind_to: none
+      mca:
+        pml: ucx
+        btl: ^openib
+        btl_tcp_if_exclude: lo,docker0
+        coll_hcoll_enable: 0
+      env:
+        UCX_MEMTYPE_CACHE: "n"
   benchmarks:
     kernel-launch:
       <<: *default_local_mode
     gemm-flops:
       <<: *default_local_mode
       parameters:
+        precision:
+          - fp64
+          - fp32_xdlops
+          - fp16_xdlops
+          - bf16_xdlops
+          - int8_xdlops
         shapes:
-          - 7680,8192,8192
+          - "4096:32768:2,8192,8192"
+          - "4096:32768:2,8192,1024"
+          - "4096:32768:2,1024,8192"
     hipblaslt-gemm:
       enable: true
       modes:
@@ -178,7 +197,7 @@ superbench:
         nb: 512
         bcast: 5
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl:r16:
       enable: false
       modes:
@@ -204,52 +223,46 @@ superbench:
         nb: 512
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl:r8:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 8
-          node_num: 1
-          bind_to: none
       parameters:
         p: 4
         q: 2
-        n: 254976
+        n: 245760
         nb: 512
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl:r4:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 4
-          node_num: 1
-          bind_to: none
       parameters:
         p: 4
         q: 1
-        n: 180224
+        n: 174080
         nb: 512
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl:r2:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 2
-          node_num: 1
-          bind_to: none
       parameters:
         p: 2
         q: 1
-        n: 128000
+        n: 123904
         nb: 512
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl:r1:
       enable: false
       modes:
@@ -260,57 +273,51 @@ superbench:
       parameters:
         p: 1
         q: 1
-        n: 90624
+        n: 87552
         nb: 512
         nbmin: 16
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl-mxp:r8:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 8
-          node_num: 1
-          bind_to: none
       parameters:
         p: 4
         q: 2
-        n: 344064
+        n: 327680
         nb: 4096
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl-mxp:r4:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 4
-          node_num: 1
-          bind_to: none
       parameters:
         p: 4
         q: 1
-        n: 245760
+        n: 229376
         nb: 4096
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl-mxp:r2:
       enable: false
       modes:
-        - name: mpi
+        - <<: *hpl_multi_gpu_mode
           proc_num: 2
-          node_num: 1
-          bind_to: none
       parameters:
         p: 2
         q: 1
-        n: 172032
+        n: 163840
         nb: 4096
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpl-mxp:r1:
       enable: false
       modes:
@@ -321,11 +328,11 @@ superbench:
       parameters:
         p: 1
         q: 1
-        n: 122880
+        n: 118784
         nb: 4096
         bcast: 1
         warmup: 1
-        iterations: 5
+        iterations: 3
     gpu-hpcg:r32:
       enable: false
       modes:
@@ -345,7 +352,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 4
         npy: 4
         npz: 2
@@ -368,7 +375,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 4
         npy: 2
         npz: 2
@@ -383,7 +390,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 2
         npy: 2
         npz: 2
@@ -398,7 +405,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 2
         npy: 2
         npz: 1
@@ -413,7 +420,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 2
         npy: 1
         npz: 1
@@ -428,7 +435,7 @@ superbench:
         nx: 560
         ny: 280
         nz: 280
-        rt: 10
+        rt: 1
         npx: 1
         npy: 1
         npz: 1
